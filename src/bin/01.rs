@@ -1,4 +1,19 @@
 pub fn part_one(input: &str) -> Option<u32> {
+    let counts = parse_input(input);
+    counts.iter().max().copied()
+}
+
+pub fn part_two(input: &str) -> Option<u32> {
+    let mut counts = parse_input(input);
+    counts.sort();
+    counts.reverse();
+    let counts = &counts[0..3];
+
+    let result: u32 = counts.iter().sum();
+    Some(result)
+}
+
+fn parse_input(input: &str) -> Vec<u32> {
     let mut counts: Vec<u32> = Vec::new();
 
     let lines = input.lines();
@@ -13,11 +28,10 @@ pub fn part_one(input: &str) -> Option<u32> {
             total += cals
         }
     }
-    counts.iter().max().copied()
-}
-
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+    if total > 0 {
+        counts.push(total)
+    }
+    counts
 }
 
 fn main() {
@@ -39,6 +53,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 1);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(45000));
     }
 }
