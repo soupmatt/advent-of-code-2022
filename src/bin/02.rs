@@ -1,36 +1,68 @@
 pub fn part_one(input: &str) -> Option<u32> {
-    let final_score = parse_input(input).map(|r| r.points_scored()).sum();
+    let final_score = parse_input_part_one(input).map(|r| r.points_scored()).sum();
     Some(final_score)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let final_score = parse_input_part_two(input).map(|r| r.points_scored()).sum();
+    Some(final_score)
 }
 
-fn parse_input<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a {
-    input.lines().map(|line| {
-        let mut parts = line.split_whitespace();
-        let op_play = match parts.next().unwrap() {
+fn parse_input_part_one<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a {
+    parse_input(input, |left, right| {
+        let op_play = match left {
             "A" => Rps::Rock,
             "B" => Rps::Paper,
             "C" => Rps::Scissors,
             _ => panic!("Invalid input"),
         };
-        let my_play = match parts.next().unwrap() {
+        let my_play = match right {
             "X" => Rps::Rock,
             "Y" => Rps::Paper,
             "Z" => Rps::Scissors,
             _ => panic!("Invalid input"),
         };
-        assert_eq!(parts.next(), None);
         Round {
-            me: my_play,
             opponent: op_play,
+            info: Info::Play(my_play),
         }
     })
 }
 
-#[derive(Debug, PartialEq, Eq)]
+fn parse_input_part_two<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a {
+    parse_input(input, |left, right| {
+        let op_play = match left {
+            "A" => Rps::Rock,
+            "B" => Rps::Paper,
+            "C" => Rps::Scissors,
+            _ => panic!("Invalid input"),
+        };
+        let my_outcome = match right {
+            "X" => Outcome::Loss,
+            "Y" => Outcome::Draw,
+            "Z" => Outcome::Win,
+            _ => panic!("Invalid input"),
+        };
+        Round {
+            opponent: op_play,
+            info: Info::Outcome(my_outcome),
+        }
+    })
+}
+
+fn parse_input<'a, F>(input: &'a str, f: F) -> impl Iterator<Item = Round> + 'a
+where
+    F: Fn(&str, &str) -> Round + 'a,
+{
+    input.lines().map(move |line| {
+        let mut parts = line.split_whitespace();
+        let round = f(parts.next().unwrap(), parts.next().unwrap());
+        assert_eq!(parts.next(), None);
+        round
+    })
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Rps {
     Rock,
     Paper,
@@ -61,7 +93,7 @@ impl Rps {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Outcome {
     Win,
     Loss,
@@ -76,18 +108,57 @@ impl Outcome {
             Outcome::Loss => 0,
         }
     }
+
+    fn against(&self, op_play: &Rps) -> Rps {
+        match self {
+            Outcome::Draw => match op_play {
+                Rps::Rock => Rps::Rock,
+                Rps::Paper => Rps::Paper,
+                Rps::Scissors => Rps::Scissors,
+            },
+            Outcome::Loss => match op_play {
+                Rps::Rock => Rps::Scissors,
+                Rps::Paper => Rps::Rock,
+                Rps::Scissors => Rps::Paper,
+            },
+            Outcome::Win => match op_play {
+                Rps::Rock => Rps::Paper,
+                Rps::Paper => Rps::Scissors,
+                Rps::Scissors => Rps::Rock,
+            },
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Info {
+    Play(Rps),
+    Outcome(Outcome),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 struct Round {
-    me: Rps,
     opponent: Rps,
+    info: Info,
 }
 
 impl Round {
+    fn outcome(&self) -> Outcome {
+        match self.info {
+            Info::Outcome(o) => o,
+            Info::Play(p) => p.outcome(&self.opponent),
+        }
+    }
+
+    fn my_play(&self) -> Rps {
+        match self.info {
+            Info::Outcome(o) => o.against(&self.opponent),
+            Info::Play(p) => p,
+        }
+    }
+
     fn points_scored(&self) -> u32 {
-        let outcome = self.me.outcome(&self.opponent);
-        self.me.points() + outcome.points()
+        self.my_play().points() + self.outcome().points()
     }
 }
 
@@ -133,21 +204,21 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_input() {
+    fn test_parse_input_part_1() {
         let input = advent_of_code::read_file("examples", 2);
-        let result: Vec<Round> = parse_input(&input).collect();
+        let result: Vec<Round> = parse_input_part_one(&input).collect();
         let expected = vec![
             Round {
                 opponent: Rps::Rock,
-                me: Rps::Paper,
+                info: Info::Play(Rps::Paper),
             },
             Round {
                 opponent: Rps::Paper,
-                me: Rps::Rock,
+                info: Info::Play(Rps::Rock),
             },
             Round {
                 opponent: Rps::Scissors,
-                me: Rps::Scissors,
+                info: Info::Play(Rps::Scissors),
             },
         ];
         assert_eq!(result, expected);
@@ -169,55 +240,55 @@ mod tests {
     #[test]
     fn test_round_points_scored() {
         let round = Round {
-            me: Rps::Rock,
+            info: Info::Play(Rps::Rock),
             opponent: Rps::Rock,
         };
         assert_eq!(round.points_scored(), 4);
 
         let round = Round {
-            me: Rps::Rock,
+            info: Info::Play(Rps::Rock),
             opponent: Rps::Paper,
         };
         assert_eq!(round.points_scored(), 1);
 
         let round = Round {
-            me: Rps::Rock,
+            info: Info::Play(Rps::Rock),
             opponent: Rps::Scissors,
         };
         assert_eq!(round.points_scored(), 7);
 
         let round = Round {
-            me: Rps::Paper,
+            info: Info::Play(Rps::Paper),
             opponent: Rps::Rock,
         };
         assert_eq!(round.points_scored(), 8);
 
         let round = Round {
-            me: Rps::Paper,
+            info: Info::Play(Rps::Paper),
             opponent: Rps::Paper,
         };
         assert_eq!(round.points_scored(), 5);
 
         let round = Round {
-            me: Rps::Paper,
+            info: Info::Play(Rps::Paper),
             opponent: Rps::Scissors,
         };
         assert_eq!(round.points_scored(), 2);
 
         let round = Round {
-            me: Rps::Scissors,
+            info: Info::Play(Rps::Scissors),
             opponent: Rps::Rock,
         };
         assert_eq!(round.points_scored(), 3);
 
         let round = Round {
-            me: Rps::Scissors,
+            info: Info::Play(Rps::Scissors),
             opponent: Rps::Paper,
         };
         assert_eq!(round.points_scored(), 9);
 
         let round = Round {
-            me: Rps::Scissors,
+            info: Info::Play(Rps::Scissors),
             opponent: Rps::Scissors,
         };
         assert_eq!(round.points_scored(), 6);
@@ -226,6 +297,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 2);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(12));
     }
 }
