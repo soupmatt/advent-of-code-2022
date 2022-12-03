@@ -8,7 +8,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     Some(final_score)
 }
 
-fn parse_input_part_one<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a {
+fn parse_input_part_one(input: &str) -> impl Iterator<Item = Round> + '_ {
     parse_input(input, |left, right| {
         let op_play = match left {
             "A" => Rps::Rock,
@@ -29,7 +29,7 @@ fn parse_input_part_one<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a 
     })
 }
 
-fn parse_input_part_two<'a>(input: &'a str) -> impl Iterator<Item = Round> + 'a {
+fn parse_input_part_two(input: &str) -> impl Iterator<Item = Round> + '_ {
     parse_input(input, |left, right| {
         let op_play = match left {
             "A" => Rps::Rock,
