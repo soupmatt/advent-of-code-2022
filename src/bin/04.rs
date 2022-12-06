@@ -9,8 +9,13 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(result)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u32> {
+    let result = input
+        .lines()
+        .map(parse_ranges)
+        .map(|ranges| has_some_overlap(&ranges.0, &ranges.1) as u32)
+        .sum();
+    Some(result)
 }
 
 fn parse_ranges(input: &str) -> (RangeInclusive<u32>, RangeInclusive<u32>) {
@@ -31,6 +36,13 @@ fn has_full_overlap(left: &RangeInclusive<u32>, right: &RangeInclusive<u32>) -> 
 
 fn contains_other(left: &RangeInclusive<u32>, right: &RangeInclusive<u32>) -> bool {
     left.start() <= right.start() && left.end() >= right.end()
+}
+
+fn has_some_overlap(left: &RangeInclusive<u32>, right: &RangeInclusive<u32>) -> bool {
+    left.contains(right.start())
+        || left.contains(right.end())
+        || right.contains(left.start())
+        || right.contains(left.end())
 }
 
 fn main() {
@@ -60,14 +72,27 @@ mod tests {
     fn test_has_full_overlap() {
         assert!(has_full_overlap(&(1..=3), &(1..=7)));
         assert!(has_full_overlap(&(3..=3), &(3..=7)));
+        assert!(!has_full_overlap(&(1..=5), &(3..=7)));
+        assert!(!has_full_overlap(&(3..=7), &(1..=5)));
         assert!(!has_full_overlap(&(12..=32), &(45..=70)));
         assert!(!has_full_overlap(&(45..=70), &(12..=32)));
         assert!(has_full_overlap(&(45..=48), &(45..=48)));
     }
 
     #[test]
+    fn test_has_some_overlap() {
+        assert!(has_some_overlap(&(1..=3), &(1..=7)));
+        assert!(has_some_overlap(&(3..=3), &(3..=7)));
+        assert!(has_some_overlap(&(1..=5), &(3..=7)));
+        assert!(has_some_overlap(&(3..=7), &(1..=5)));
+        assert!(!has_some_overlap(&(12..=32), &(45..=70)));
+        assert!(!has_some_overlap(&(45..=70), &(12..=32)));
+        assert!(has_some_overlap(&(45..=48), &(45..=48)));
+    }
+
+    #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 4);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(4));
     }
 }
