@@ -1,18 +1,22 @@
 use std::collections::HashSet;
 
 pub fn part_one(input: &str) -> Option<usize> {
-    for i in 4..input.len() {
-        let slc = &input[i - 4..i];
+    find_marker(input, 4)
+}
+
+pub fn find_marker(input: &str, size: usize) -> Option<usize> {
+    for i in size..input.len() {
+        let slc = &input[i - size..i];
         let hash: HashSet<char> = HashSet::from_iter(slc.chars());
-        if hash.len() == 4 {
+        if hash.len() == size {
             return Some(i);
         }
     }
     None
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    find_marker(input, 14)
 }
 
 fn main() {
@@ -36,7 +40,10 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let input = advent_of_code::read_file("examples", 6);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two("mjqjpqmgbljsphdztnvjfqwrcgsmlb"), Some(19));
+        assert_eq!(part_two("bvwbjplbgvbhsrlpgdmjqwftvncz"), Some(23));
+        assert_eq!(part_two("nppdvjthqldpwncqszvftbrmjlhg"), Some(23));
+        assert_eq!(part_two("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), Some(29));
+        assert_eq!(part_two("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), Some(26));
     }
 }
