@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
+use std::collections::VecDeque;
+
 use regex::Regex;
 
 pub fn part_one(input: &str) -> Option<String> {
@@ -78,16 +80,42 @@ fn parse_move_line(input: &str) -> Command {
 }
 
 fn execute_move(stacks: &mut [Vec<char>], cmd: &Command) {
+    let mut items: VecDeque<char> = VecDeque::new();
+    let from = stacks.get_mut(cmd.from - 1).unwrap();
     for _ in 0..cmd.count {
-        let from = stacks.get_mut(cmd.from - 1).unwrap();
         let item = from.pop().unwrap();
-        let to = stacks.get_mut(cmd.to - 1).unwrap();
+        items.push_front(item);
+    }
+    let to = stacks.get_mut(cmd.to - 1).unwrap();
+    while !items.is_empty() {
+        let item = items.pop_back().unwrap();
         to.push(item);
     }
 }
 
-pub fn part_two(_input: &str) -> Option<String> {
-    None
+fn execute_move2(stacks: &mut [Vec<char>], cmd: &Command) {
+    let mut items: Vec<char> = Vec::new();
+    let from = stacks.get_mut(cmd.from - 1).unwrap();
+    for _ in 0..cmd.count {
+        let item = from.pop().unwrap();
+        items.push(item);
+    }
+    let to = stacks.get_mut(cmd.to - 1).unwrap();
+    while !items.is_empty() {
+        let item = items.pop().unwrap();
+        to.push(item);
+    }
+}
+
+pub fn part_two(input: &str) -> Option<String> {
+    let (start_state, commands) = split_input(input);
+    let mut stacks = parse_initial_stacks(start_state);
+    commands
+        .lines()
+        .map(parse_move_line)
+        .for_each(|cmd| execute_move2(&mut stacks, &cmd));
+    let result: String = stacks.iter_mut().map(|v| v.pop().unwrap()).collect();
+    Some(result)
 }
 
 fn main() {
@@ -165,8 +193,36 @@ mod tests {
     }
 
     #[test]
+    fn test_execute_move2() {
+        let mut stacks = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
+        execute_move2(
+            &mut stacks,
+            &Command {
+                count: 1,
+                from: 2,
+                to: 3,
+            },
+        );
+        assert_eq!(stacks, vec![vec!['Z', 'N'], vec!['M', 'C'], vec!['P', 'D']]);
+
+        let mut stacks = vec![vec!['Z', 'N'], vec!['M', 'C', 'D'], vec!['P']];
+        execute_move2(
+            &mut stacks,
+            &Command {
+                count: 2,
+                from: 1,
+                to: 2,
+            },
+        );
+        assert_eq!(
+            stacks,
+            vec![vec![], vec!['M', 'C', 'D', 'Z', 'N'], vec!['P']]
+        );
+    }
+
+    #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 5);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(String::from("MCD")));
     }
 }
