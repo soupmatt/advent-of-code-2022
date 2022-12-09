@@ -14,15 +14,31 @@ pub fn part_one(input: &str) -> Option<u32> {
             if size < 100_000 {
                 Some(size)
             } else {
-    None
-}
+                None
+            }
         })
         .sum();
     Some(sum)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+const DISK_SIZE: u32 = 70000000;
+const NEEDED_FREE_SPACE: u32 = 30000000;
+
+pub fn part_two(input: &str) -> Option<u32> {
+    let root_dir = parse_input(input);
+    let current_available = DISK_SIZE - root_dir.size();
+    let need_to_free = NEEDED_FREE_SPACE - current_available;
+    root_dir
+        .iter()
+        .filter_map(|d| {
+            let size = d.size();
+            if size > need_to_free {
+                Some(size)
+            } else {
+                None
+            }
+        })
+        .min()
 }
 
 enum FSElementType<'a> {
@@ -188,6 +204,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 7);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(24933642));
     }
 }
