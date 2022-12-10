@@ -43,10 +43,6 @@ impl Forest {
                     .into_iter()
                     .all(|check_col| current_height > self.location_height(current_row, check_col))
                 {
-                    println!(
-                        "{},{}, with height {} is visible from the left",
-                        current_row, current_col, current_height
-                    );
                     visible += 1;
                     continue 'next_tree;
                 }
@@ -55,10 +51,6 @@ impl Forest {
                     .into_iter()
                     .all(|check_col| current_height > self.location_height(current_row, check_col))
                 {
-                    println!(
-                        "{},{}, with height {} is visible from the right",
-                        current_row, current_col, current_height
-                    );
                     visible += 1;
                     continue 'next_tree;
                 }
@@ -67,10 +59,6 @@ impl Forest {
                     .into_iter()
                     .all(|check_row| current_height > self.location_height(check_row, current_col))
                 {
-                    println!(
-                        "{},{}, with height {} is visible from the top",
-                        current_row, current_col, current_height
-                    );
                     visible += 1;
                     continue 'next_tree;
                 }
@@ -79,10 +67,6 @@ impl Forest {
                     .into_iter()
                     .all(|check_row| current_height > self.location_height(check_row, current_col))
                 {
-                    println!(
-                        "{},{}, with height {} is visible from the bottom",
-                        current_row, current_col, current_height
-                    );
                     visible += 1;
                     continue 'next_tree;
                 }
@@ -110,7 +94,6 @@ impl Forest {
             * self.viewing_distance_south(row, col)
             * self.viewing_distance_east(row, col)
             * self.viewing_distance_west(row, col);
-        println!("{}, {} had a score of {}", row, col, score);
         score
     }
 
@@ -123,10 +106,6 @@ impl Forest {
                 break;
             }
         }
-        println!(
-            "{},{}, has view distance {} from the north",
-            row, col, distance
-        );
         distance
     }
 
@@ -139,10 +118,6 @@ impl Forest {
                 break;
             }
         }
-        println!(
-            "{},{}, has view distance {} from the south",
-            row, col, distance
-        );
         distance
     }
 
@@ -155,10 +130,6 @@ impl Forest {
                 break;
             }
         }
-        println!(
-            "{},{}, has view distance {} from the east",
-            row, col, distance
-        );
         distance
     }
 
@@ -171,10 +142,6 @@ impl Forest {
                 break;
             }
         }
-        println!(
-            "{},{}, has view distance {} from the west",
-            row, col, distance
-        );
         distance
     }
 }
