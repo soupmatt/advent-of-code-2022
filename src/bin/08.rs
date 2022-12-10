@@ -3,8 +3,9 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(forest.visible_trees())
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u32> {
+    let forest = parse_input(input);
+    forest.scenery_scores().into_iter().max()
 }
 
 struct Forest {
@@ -93,6 +94,89 @@ impl Forest {
     fn location_height(&self, row: usize, col: usize) -> &u8 {
         &self.heights[row][col]
     }
+
+    fn scenery_scores(&self) -> Vec<u32> {
+        let mut result = vec![];
+        for current_row in 1..self.max_row - 1 {
+            for current_col in 1..self.max_col - 1 {
+                result.push(self.scenery_score(current_row, current_col))
+            }
+        }
+        result
+    }
+
+    fn scenery_score(&self, row: usize, col: usize) -> u32 {
+        let score = self.viewing_distance_north(row, col)
+            * self.viewing_distance_south(row, col)
+            * self.viewing_distance_east(row, col)
+            * self.viewing_distance_west(row, col);
+        println!("{}, {} had a score of {}", row, col, score);
+        score
+    }
+
+    fn viewing_distance_north(&self, row: usize, col: usize) -> u32 {
+        let current_height = self.location_height(row, col);
+        let mut distance: u32 = 0;
+        for check_row in (0..row).rev() {
+            distance += 1;
+            if current_height <= self.location_height(check_row, col) {
+                break;
+            }
+        }
+        println!(
+            "{},{}, has view distance {} from the north",
+            row, col, distance
+        );
+        distance
+    }
+
+    fn viewing_distance_south(&self, row: usize, col: usize) -> u32 {
+        let current_height = self.location_height(row, col);
+        let mut distance: u32 = 0;
+        for check_row in row + 1..self.max_row {
+            distance += 1;
+            if current_height <= self.location_height(check_row, col) {
+                break;
+            }
+        }
+        println!(
+            "{},{}, has view distance {} from the south",
+            row, col, distance
+        );
+        distance
+    }
+
+    fn viewing_distance_east(&self, row: usize, col: usize) -> u32 {
+        let current_height = self.location_height(row, col);
+        let mut distance: u32 = 0;
+        for check_col in col + 1..self.max_col {
+            distance += 1;
+            if current_height <= self.location_height(row, check_col) {
+                break;
+            }
+        }
+        println!(
+            "{},{}, has view distance {} from the east",
+            row, col, distance
+        );
+        distance
+    }
+
+    fn viewing_distance_west(&self, row: usize, col: usize) -> u32 {
+        let current_height = self.location_height(row, col);
+        let mut distance: u32 = 0;
+        for check_col in (0..col).rev() {
+            distance += 1;
+            if current_height <= self.location_height(row, check_col) {
+                break;
+            }
+        }
+        println!(
+            "{},{}, has view distance {} from the west",
+            row, col, distance
+        );
+        distance
+    }
 }
 
 fn main() {
@@ -114,6 +198,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 8);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(8));
     }
 }
