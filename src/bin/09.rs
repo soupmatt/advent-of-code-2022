@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashSet, iter::repeat};
 
 pub fn part_one(input: &str) -> Option<usize> {
     let directions = parse_input(input);
-    let mut rope = Rope::new();
+    let mut rope = Rope::new(2);
     for dir in directions {
         rope.make_step(dir)
     }
@@ -57,19 +57,26 @@ enum Direction {
 
 #[derive(Debug, PartialEq, Eq)]
 struct Rope {
-    head: Point,
-    tail: Point,
+    segments: Vec<Point>,
     history: Vec<Point>,
 }
 
 impl Rope {
-    fn new() -> Rope {
-        Rope {
-            head: Point { x: 0, y: 0 },
-            tail: Point { x: 0, y: 0 },
+    fn new(length: u8) -> Rope {
+        let mut r = Rope {
+            segments: vec![],
             history: vec![Point { x: 0, y: 0 }],
+        };
+        for _ in 0..length {
+            r.segments.push(Point { x: 0, y: 0 })
         }
+        r
     }
+
+    fn head(&mut self) -> &mut Point {
+        self.segments.first_mut().unwrap()
+    }
+
     fn make_step(&mut self, dir: Direction) {
         match dir {
             Direction::Up => self.step_up(),
@@ -81,35 +88,57 @@ impl Rope {
     }
 
     fn step_up(&mut self) {
-        self.head.y += 1
+        self.head().y += 1
     }
     fn step_down(&mut self) {
-        self.head.y -= 1
+        self.head().y -= 1
     }
     fn step_left(&mut self) {
-        self.head.x -= 1
+        self.head().x -= 1
     }
     fn step_right(&mut self) {
-        self.head.x += 1
+        self.head().x += 1
     }
 
     fn adjust_tail(&mut self) {
-        let y_offset = self.head.y - self.tail.y;
-        let x_offset = self.head.x - self.tail.x;
+        let mut itr = self.segments.iter_mut();
+        let mut h = itr.next().unwrap();
+        let mut t = itr.next().unwrap();
+        loop {
+            let moved = Rope::adjust_segment(h, t);
+
+            match itr.next() {
+                Some(i) => {
+                    h = t;
+                    t = i;
+                }
+                None => {
+                    if moved {
+                        self.history.push(t.to_owned());
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    fn adjust_segment(head: &Point, tail: &mut Point) -> bool {
+        let y_offset = head.y - tail.y;
+        let x_offset = head.x - tail.x;
         if (-1..=1).contains(&x_offset) && (-1..=1).contains(&y_offset) {
-            return;
+            return false;
         }
         match y_offset.cmp(&0isize) {
-            Ordering::Greater => self.tail.y += 1,
-            Ordering::Less => self.tail.y -= 1,
+            Ordering::Greater => tail.y += 1,
+            Ordering::Less => tail.y -= 1,
             Ordering::Equal => (),
         }
         match x_offset.cmp(&0isize) {
-            Ordering::Greater => self.tail.x += 1,
-            Ordering::Less => self.tail.x -= 1,
+            Ordering::Greater => tail.x += 1,
+            Ordering::Less => tail.x -= 1,
             Ordering::Equal => (),
         }
-        self.history.push(self.tail);
+        true
     }
 }
 
@@ -165,12 +194,11 @@ mod tests {
 
     #[test]
     fn test_rope_new() {
-        let rope = Rope::new();
+        let rope = Rope::new(2);
         assert_eq!(
             rope,
             Rope {
-                head: Point { x: 0, y: 0 },
-                tail: Point { x: 0, y: 0 },
+                segments: vec![Point { x: 0, y: 0 }, Point { x: 0, y: 0 }],
                 history: vec![Point { x: 0, y: 0 }],
             }
         )
@@ -179,13 +207,12 @@ mod tests {
     #[test]
     fn test_rope_adjust_tail() {
         // from new
-        let mut rope = Rope::new();
+        let mut rope = Rope::new(2);
         rope.adjust_tail();
         assert_eq!(
             rope,
             Rope {
-                head: Point { x: 0, y: 0 },
-                tail: Point { x: 0, y: 0 },
+                segments: vec![Point { x: 0, y: 0 }, Point { x: 0, y: 0 }],
                 history: vec![Point { x: 0, y: 0 }],
             }
         );
@@ -262,25 +289,29 @@ mod tests {
         a_hist: Vec<Point>,
     ) {
         let mut rope = Rope {
-            head: Point {
-                x: 3 + head_x_offset,
-                y: 3 + head_y_offset,
-            },
-            tail: Point { x: 3, y: 3 },
+            segments: vec![
+                Point {
+                    x: 3 + head_x_offset,
+                    y: 3 + head_y_offset,
+                },
+                Point { x: 3, y: 3 },
+            ],
             history: vec![],
         };
         rope.adjust_tail();
         assert_eq!(
             rope,
             Rope {
-                head: Point {
-                    x: 3 + head_x_offset,
-                    y: 3 + head_y_offset,
-                },
-                tail: Point {
-                    x: 3 + tail_x_move,
-                    y: 3 + tail_y_move,
-                },
+                segments: vec![
+                    Point {
+                        x: 3 + head_x_offset,
+                        y: 3 + head_y_offset,
+                    },
+                    Point {
+                        x: 3 + tail_x_move,
+                        y: 3 + tail_y_move,
+                    }
+                ],
                 history: a_hist,
             }
         );
