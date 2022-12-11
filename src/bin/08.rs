@@ -90,11 +90,10 @@ impl Forest {
     }
 
     fn scenery_score(&self, row: usize, col: usize) -> u32 {
-        let score = self.viewing_distance_north(row, col)
+        self.viewing_distance_north(row, col)
             * self.viewing_distance_south(row, col)
             * self.viewing_distance_east(row, col)
-            * self.viewing_distance_west(row, col);
-        score
+            * self.viewing_distance_west(row, col)
     }
 
     fn viewing_distance_north(&self, row: usize, col: usize) -> u32 {
