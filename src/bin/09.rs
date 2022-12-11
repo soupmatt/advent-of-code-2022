@@ -10,8 +10,14 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(set.len())
 }
 
-pub fn part_two(_input: &str) -> Option<usize> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let directions = parse_input(input);
+    let mut rope = Rope::new(10);
+    for dir in directions {
+        rope.make_step(dir)
+    }
+    let set: HashSet<Point> = HashSet::from_iter(rope.history.into_iter());
+    Some(set.len())
 }
 
 fn parse_input(input: &str) -> Vec<Direction> {
@@ -150,6 +156,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -320,6 +328,18 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 9);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(1));
+
+        let input = indoc! {"
+            R 5
+            U 8
+            L 8
+            D 3
+            R 17
+            D 10
+            L 25
+            U 20
+        "};
+        assert_eq!(part_two(input), Some(36));
     }
 }

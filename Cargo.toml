@@ -11,3 +11,4 @@ publish = false
 pico-args = "0.5.0"
 lazy_static = "1.4.0"
 regex = "1"
+indoc = "1.0.7"
