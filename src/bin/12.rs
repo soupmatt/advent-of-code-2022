@@ -6,7 +6,9 @@ use std::{
 use pathfinding::prelude::dijkstra;
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let (start, goal, edges) = parse_input(input);
+    let (start, goal, chars) = parse_input(input);
+
+    let edges = construct_edges(chars);
 
     let path = dijkstra(
         &start,
@@ -29,10 +31,9 @@ pub fn part_two(_input: &str) -> Option<u32> {
     None
 }
 
-fn parse_input(input: &str) -> (Pos, Pos, BTreeMap<Pos, Vec<Pos>>) {
+fn parse_input(input: &str) -> (Pos, Pos, Vec<Vec<u8>>) {
     let mut start = Pos(0, 0);
     let mut goal = Pos(0, 0);
-    let mut edges = BTreeMap::new();
 
     let chars: Vec<Vec<u8>> = input
         .lines()
@@ -54,7 +55,11 @@ fn parse_input(input: &str) -> (Pos, Pos, BTreeMap<Pos, Vec<Pos>>) {
                 .collect()
         })
         .collect();
+    (start, goal, chars)
+}
 
+fn construct_edges(chars: Vec<Vec<u8>>) -> BTreeMap<Pos, Vec<Pos>> {
+    let mut edges = BTreeMap::new();
     let y_max = chars.len() - 1;
     let x_max = chars.first().unwrap().len() - 1;
 
@@ -75,14 +80,12 @@ fn parse_input(input: &str) -> (Pos, Pos, BTreeMap<Pos, Vec<Pos>>) {
         };
         edges.insert(p.clone(), neighbors);
     };
-
     chars.iter().enumerate().for_each(|(y, row)| {
         row.iter()
             .enumerate()
             .for_each(|(x, c)| add_to_map(&Pos(x, y), *c))
     });
-
-    (start, goal, edges)
+    edges
 }
 
 fn main() {
