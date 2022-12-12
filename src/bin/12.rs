@@ -7,9 +7,6 @@ use pathfinding::prelude::dijkstra;
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (start, goal, edges) = parse_input(input);
-    println!("start: {:?}", start);
-    println!("end: {:?}", goal);
-    println!("{:#?}", edges);
 
     let path = dijkstra(
         &start,
@@ -25,13 +22,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         },
         |p| *p == goal,
     );
-    if let Some((p, cost)) = path {
-        println!("path home length = {}", p.len());
-        println!("path home: {:?}", p);
-        Some(cost)
-    } else {
-        None
-    }
+    path.map(|(_, cost)| cost)
 }
 
 pub fn part_two(_input: &str) -> Option<u32> {
@@ -63,27 +54,6 @@ fn parse_input(input: &str) -> (Pos, Pos, BTreeMap<Pos, Vec<Pos>>) {
                 .collect()
         })
         .collect();
-
-    let num_str = chars
-        .iter()
-        .map(|row| {
-            row.iter()
-                .map(|u| {
-                    if *u < 100 {
-                        let mut s = " ".to_owned();
-                        s.push_str(&u.to_string());
-                        s
-                    } else {
-                        u.to_string()
-                    }
-                })
-                .collect::<Vec<String>>()
-                .join(",")
-        })
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    println!("{}", num_str);
 
     let y_max = chars.len() - 1;
     let x_max = chars.first().unwrap().len() - 1;
