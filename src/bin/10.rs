@@ -1,17 +1,20 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, ops::RangeInclusive};
 
-pub fn part_one(input: &str) -> Option<i32> {
+pub fn part_one(input: &str) -> Option<isize> {
     let cpu = Cpu::new(input);
     let sum = cpu
         .skip(19)
         .step_by(40)
-        .map(|s| s.cycle_num * s.reg_x)
+        .map(|s| isize::try_from(s.cycle_num).unwrap() * s.reg_x)
         .sum();
     Some(sum)
 }
 
-pub fn part_two(_input: &str) -> Option<i32> {
-    None
+pub fn part_two(input: &str) -> Option<String> {
+    let cpu = Cpu::new(input);
+    let mut screen = Screen::new();
+    cpu.take(6 * 40).for_each(|cs| screen.draw_pixel(cs));
+    Some(screen.to_string())
 }
 
 fn main() {
@@ -23,7 +26,7 @@ fn main() {
 #[derive(Debug, PartialEq, Eq)]
 enum Instruction {
     Noop,
-    Addx(i32),
+    Addx(isize),
 }
 
 fn parse_instruction(input: &str) -> Instruction {
@@ -31,7 +34,7 @@ fn parse_instruction(input: &str) -> Instruction {
         return Instruction::Noop;
     } else if input.starts_with("addx ") {
         if let Some((_, digits)) = input.split_once(' ') {
-            let amount: i32 = digits.parse().unwrap();
+            let amount: isize = digits.parse().unwrap();
             return Instruction::Addx(amount);
         }
     }
@@ -47,8 +50,8 @@ fn parse_instruction_stream(input: &str) -> VecDeque<Instruction> {
 
 struct Cpu {
     instruction_stream: VecDeque<Instruction>,
-    cycle_num: i32,
-    reg_x: i32,
+    cycle_num: usize,
+    reg_x: isize,
     current_operation: Instruction,
     wait_cycles: u8,
     done: bool,
@@ -56,8 +59,8 @@ struct Cpu {
 
 #[derive(Debug)]
 struct CpuState {
-    cycle_num: i32,
-    reg_x: i32,
+    cycle_num: usize,
+    reg_x: isize,
 }
 
 impl Cpu {
@@ -118,8 +121,48 @@ impl Iterator for Cpu {
     }
 }
 
+#[derive(Debug)]
+struct Screen([[bool; 40]; 6]);
+
+impl Screen {
+    fn new() -> Screen {
+        Screen([[false; 40]; 6])
+    }
+
+    fn draw_pixel(&mut self, cs: CpuState) {
+        let sprite = Screen::sprite_position(&cs);
+        let position = (cs.cycle_num - 1) % 40;
+        let lit = sprite.contains(&position);
+        let row = (cs.cycle_num - 1) / 40;
+        let col = position;
+        self.0[row][col] = lit;
+    }
+
+    fn sprite_position(cs: &CpuState) -> RangeInclusive<usize> {
+        let val = usize::try_from(cs.reg_x).unwrap_or(0usize) % 40;
+        match val {
+            0 => 0..=1,
+            _ => val - 1..=val + 1,
+        }
+    }
+}
+
+impl ToString for Screen {
+    fn to_string(&self) -> String {
+        self.0
+            .map(|line| {
+                line.map(|b| if b { '#' } else { '.' })
+                    .iter()
+                    .collect::<String>()
+            })
+            .join("\n")
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -139,6 +182,15 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 10);
-        assert_eq!(part_two(&input), None);
+        let expected = indoc! { "
+            ##..##..##..##..##..##..##..##..##..##..
+            ###...###...###...###...###...###...###.
+            ####....####....####....####....####....
+            #####.....#####.....#####.....#####.....
+            ######......######......######......####
+            #######.......#######.......#######.....
+            "
+        };
+        assert_eq!(part_two(&input), Some(expected.trim_end().to_string()));
     }
 }
