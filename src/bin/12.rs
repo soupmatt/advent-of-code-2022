@@ -8,7 +8,7 @@ use pathfinding::prelude::dijkstra;
 pub fn part_one(input: &str) -> Option<u32> {
     let (start, goal, chars) = parse_input(input);
 
-    let edges = construct_edges(chars);
+    let edges = construct_edges(&chars);
 
     let path = dijkstra(
         &start,
@@ -27,8 +27,33 @@ pub fn part_one(input: &str) -> Option<u32> {
     path.map(|(_, cost)| cost)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u32> {
+    let (_, goal, chars) = parse_input(input);
+
+    let edges = construct_edges(&chars);
+
+    let starts = find_start_points(&chars);
+
+    starts
+        .iter()
+        .filter_map(|start| {
+            let path = dijkstra(
+                start,
+                |p| {
+                    if let Some(neighbors) = edges.get(p) {
+                        neighbors.iter().map(|p| (p.clone(), 1u32))
+                    } else {
+                        panic!(
+                            "Something went wrong trying to find the neighbors of {:?}",
+                            p
+                        )
+                    }
+                },
+                |p| *p == goal,
+            );
+            path.map(|(_, cost)| cost)
+        })
+        .min()
 }
 
 fn parse_input(input: &str) -> (Pos, Pos, Vec<Vec<u8>>) {
@@ -58,7 +83,7 @@ fn parse_input(input: &str) -> (Pos, Pos, Vec<Vec<u8>>) {
     (start, goal, chars)
 }
 
-fn construct_edges(chars: Vec<Vec<u8>>) -> BTreeMap<Pos, Vec<Pos>> {
+fn construct_edges(chars: &Vec<Vec<u8>>) -> BTreeMap<Pos, Vec<Pos>> {
     let mut edges = BTreeMap::new();
     let y_max = chars.len() - 1;
     let x_max = chars.first().unwrap().len() - 1;
@@ -86,6 +111,18 @@ fn construct_edges(chars: Vec<Vec<u8>>) -> BTreeMap<Pos, Vec<Pos>> {
             .for_each(|(x, c)| add_to_map(&Pos(x, y), *c))
     });
     edges
+}
+
+fn find_start_points(chars: &[Vec<u8>]) -> Vec<Pos> {
+    let mut result = vec![];
+    for (y, row) in chars.iter().enumerate() {
+        for (x, c) in row.iter().enumerate() {
+            if *c == b'a' {
+                result.push(Pos(x, y));
+            }
+        }
+    }
+    result
 }
 
 fn main() {
@@ -122,6 +159,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 12);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(29));
     }
 }
