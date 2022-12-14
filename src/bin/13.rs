@@ -11,19 +11,29 @@ pub fn part_one(input: &str) -> Option<usize> {
         .filter_map(|(i, mut c)| {
             let lhs = parse_input_line(c.next().unwrap()).unwrap();
             let rhs = parse_input_line(c.next().unwrap()).unwrap();
-            match lhs.partial_cmp(&rhs) {
-                Some(Ordering::Less) => Some(i + 1),
-                Some(Ordering::Greater) => None,
-                Some(Ordering::Equal) => panic!("these lines shouldn't be equal"),
-                None => panic!("couldn't figure out the line ordering!"),
+            match lhs.cmp(&rhs) {
+                Ordering::Less => Some(i + 1),
+                Ordering::Greater => None,
+                Ordering::Equal => panic!("these lines shouldn't be equal"),
             }
         })
         .sum();
     Some(sum)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let div1 = parse_input_line("[[2]]").unwrap();
+    let div2 = parse_input_line("[[6]]").unwrap();
+    let mut packets = input
+        .split_whitespace()
+        .map(|l| parse_input_line(l).unwrap())
+        .collect_vec();
+    packets.push(div1.clone());
+    packets.push(div2.clone());
+    packets.sort();
+    let idx1 = packets.binary_search(&div1).unwrap() + 1;
+    let idx2 = packets.binary_search(&div2).unwrap() + 1;
+    Some(idx1 * idx2)
 }
 
 fn main() {
@@ -37,20 +47,20 @@ fn parse_input_line(input: &str) -> Result<Item, String> {
     p.parse()
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Item {
     List(Vec<Item>),
     Num(u32),
 }
 
 impl Item {
-    fn cmp_lists(lhs: &[Item], rhs: &[Item]) -> Option<Ordering> {
+    fn cmp_lists(lhs: &[Item], rhs: &[Item]) -> Ordering {
         match (lhs, rhs) {
-            (&[], &[]) => Some(Ordering::Equal),
-            (&[_, ..], &[]) => Some(Ordering::Greater),
-            (&[], &[_, ..]) => Some(Ordering::Less),
-            ([l_head, l_tail @ ..], [r_head, r_tail @ ..]) => match l_head.partial_cmp(r_head) {
-                Some(Ordering::Equal) => Self::cmp_lists(l_tail, r_tail),
+            (&[], &[]) => Ordering::Equal,
+            (&[_, ..], &[]) => Ordering::Greater,
+            (&[], &[_, ..]) => Ordering::Less,
+            ([l_head, l_tail @ ..], [r_head, r_tail @ ..]) => match l_head.cmp(r_head) {
+                Ordering::Equal => Self::cmp_lists(l_tail, r_tail),
                 a => a,
             },
         }
@@ -59,11 +69,17 @@ impl Item {
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> Ordering {
         if self.eq(other) {
-            return Some(Ordering::Equal);
+            return Ordering::Equal;
         }
         match (self, other) {
-            (Item::Num(lhs), Item::Num(rhs)) => lhs.partial_cmp(rhs),
+            (Item::Num(lhs), Item::Num(rhs)) => lhs.cmp(rhs),
             (Item::List(lhs), Item::List(rhs)) => Item::cmp_lists(lhs, rhs),
             (Item::Num(lhs), Item::List(rhs)) => Item::cmp_lists(&[Item::Num(*lhs)], rhs),
             (Item::List(lhs), Item::Num(rhs)) => Item::cmp_lists(lhs, &[Item::Num(*rhs)]),
@@ -166,7 +182,7 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 13);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(140));
     }
 
     #[test]
@@ -197,70 +213,58 @@ mod tests {
     }
 
     #[test]
-    fn test_item_partial_cmp() {
+    fn test_item_cmp() {
+        assert_eq!(Item::Num(2).cmp(&Item::Num(2)), Ordering::Equal);
+        assert_eq!(Item::Num(2).cmp(&Item::Num(4)), Ordering::Less);
+        assert_eq!(Item::Num(4).cmp(&Item::Num(2)), Ordering::Greater);
+
+        assert_eq!(Item::List(vec![]).cmp(&Item::List(vec![])), Ordering::Equal);
         assert_eq!(
-            Item::Num(2).partial_cmp(&Item::Num(2)),
-            Some(Ordering::Equal)
+            Item::List(vec![Item::Num(5)]).cmp(&Item::List(vec![Item::Num(5)])),
+            Ordering::Equal
         );
         assert_eq!(
-            Item::Num(2).partial_cmp(&Item::Num(4)),
-            Some(Ordering::Less)
+            Item::List(vec![]).cmp(&Item::List(vec![Item::Num(5)])),
+            Ordering::Less
         );
         assert_eq!(
-            Item::Num(4).partial_cmp(&Item::Num(2)),
-            Some(Ordering::Greater)
+            Item::List(vec![Item::Num(5)]).cmp(&Item::List(vec![])),
+            Ordering::Greater
         );
 
         assert_eq!(
-            Item::List(vec![]).partial_cmp(&Item::List(vec![])),
-            Some(Ordering::Equal)
+            Item::List(vec![Item::Num(7)]).cmp(&Item::List(vec![Item::Num(5)])),
+            Ordering::Greater
         );
         assert_eq!(
-            Item::List(vec![Item::Num(5)]).partial_cmp(&Item::List(vec![Item::Num(5)])),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            Item::List(vec![]).partial_cmp(&Item::List(vec![Item::Num(5)])),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            Item::List(vec![Item::Num(5)]).partial_cmp(&Item::List(vec![])),
-            Some(Ordering::Greater)
+            Item::List(vec![Item::Num(7)]).cmp(&Item::List(vec![Item::Num(9)])),
+            Ordering::Less
         );
 
         assert_eq!(
-            Item::List(vec![Item::Num(7)]).partial_cmp(&Item::List(vec![Item::Num(5)])),
-            Some(Ordering::Greater)
+            Item::Num(5).cmp(&Item::List(vec![Item::Num(5)])),
+            Ordering::Equal
         );
         assert_eq!(
-            Item::List(vec![Item::Num(7)]).partial_cmp(&Item::List(vec![Item::Num(9)])),
-            Some(Ordering::Less)
-        );
-
-        assert_eq!(
-            Item::Num(5).partial_cmp(&Item::List(vec![Item::Num(5)])),
-            Some(Ordering::Equal)
+            Item::Num(7).cmp(&Item::List(vec![Item::Num(5)])),
+            Ordering::Greater
         );
         assert_eq!(
-            Item::Num(7).partial_cmp(&Item::List(vec![Item::Num(5)])),
-            Some(Ordering::Greater)
-        );
-        assert_eq!(
-            Item::Num(7).partial_cmp(&Item::List(vec![Item::Num(9)])),
-            Some(Ordering::Less)
+            Item::Num(7).cmp(&Item::List(vec![Item::Num(9)])),
+            Ordering::Less
         );
 
         assert_eq!(
-            Item::List(vec![Item::Num(7)]).partial_cmp(&Item::Num(7)),
-            Some(Ordering::Equal)
+            Item::List(vec![Item::Num(7)]).cmp(&Item::Num(7)),
+            Ordering::Equal
         );
         assert_eq!(
-            Item::List(vec![Item::Num(7)]).partial_cmp(&Item::Num(5)),
-            Some(Ordering::Greater)
+            Item::List(vec![Item::Num(7)]).cmp(&Item::Num(5)),
+            Ordering::Greater
         );
         assert_eq!(
-            Item::List(vec![Item::Num(7)]).partial_cmp(&Item::Num(9)),
-            Some(Ordering::Less)
+            Item::List(vec![Item::Num(7)]).cmp(&Item::Num(9)),
+            Ordering::Less
         );
     }
 }
