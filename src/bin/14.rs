@@ -1,9 +1,6 @@
-use std::{
-    fmt::Display,
-    fmt::Write,
-    ops::{Add, RangeInclusive},
-};
+use std::{fmt::Display, ops::RangeInclusive};
 
+use advent_of_code::sparse_table::SparseTable;
 use itertools::Itertools;
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -25,11 +22,8 @@ fn main() {
 }
 
 struct Cave {
-    data: Vec<Vec<Tile>>,
+    table: SparseTable<Tile>,
     sand_count: usize,
-    col_offset: usize,
-    col_count: usize,
-    row_count: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,45 +35,32 @@ enum MoveErr {
 impl Cave {
     fn new(input: &str) -> Cave {
         let rock_formations = Cave::parse_input(input);
-        let col_bounds = rock_formations
-            .iter()
-            .flatten()
-            .map(|p| p.0)
-            .minmax()
-            .into_option()
-            .unwrap();
-        let row_max = rock_formations.iter().flatten().map(|p| p.1).max().unwrap();
 
-        let col_count = col_bounds.1 + 3 - col_bounds.0;
-        let col_offset = col_bounds.0 - 1;
-        let row_count = row_max + 1;
+        let mut table = SparseTable::new_with_start_point(Tile::Air, (0, 500));
 
-        let data = Cave::make_data_vectors(rock_formations, col_offset, col_count, row_count);
+        for f in rock_formations {
+            let mut pts = f.into_iter();
 
-        let mut cave = Cave::from_vector_data(data);
-        cave.col_offset = col_offset;
-        cave
-    }
-
-    fn from_vector_data(data: Vec<Vec<Tile>>) -> Cave {
-        let sand_count = data
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .filter_map(|t| match t {
-                        Tile::Sand => Some(1),
-                        _ => None,
-                    })
-                    .count()
-            })
-            .sum();
+            let (mut p_col, mut p_row) = pts.next().unwrap();
+            for (n_col, n_row) in pts {
+                if n_row == p_row {
+                    for c in make_range(p_col, n_col) {
+                        table.insert((p_row, c), Tile::Rock);
+                    }
+                } else if n_col == p_col {
+                    for r in make_range(p_row, n_row) {
+                        table.insert((r, p_col), Tile::Rock);
+                    }
+                } else {
+                    panic!("something went wrong!")
+                }
+                (p_col, p_row) = (n_col, n_row);
+            }
+        }
 
         Cave {
-            sand_count,
-            col_offset: 0,
-            row_count: data.len(),
-            col_count: data.first().unwrap().len(),
-            data,
+            table,
+            sand_count: 0,
         }
     }
 
@@ -97,43 +78,14 @@ impl Cave {
             .collect_vec()
     }
 
-    fn make_data_vectors(
-        rock_formations: Vec<Vec<(usize, usize)>>,
-        col_offset: usize,
-        col_count: usize,
-        row_count: usize,
-    ) -> Vec<Vec<Tile>> {
-        let mut data = vec![vec![Tile::Air; col_count]; row_count];
-        for f in rock_formations {
-            let mut pts = f.iter();
-
-            let mut p = pts.next().unwrap();
-            for n in pts {
-                if n.1 == p.1 {
-                    for c in make_range(p.0, n.0) {
-                        data[p.1][c - col_offset] = Tile::Rock;
-                    }
-                } else if n.0 == p.0 {
-                    for r in make_range(p.1, n.1) {
-                        data[r][p.0 - col_offset] = Tile::Rock;
-                    }
-                } else {
-                    panic!("something went wrong!")
-                }
-                p = n;
-            }
-        }
-        data
-    }
-
     fn drop_sand(&mut self) -> Option<usize> {
         let start_row = 0;
-        let start_col = 500 - self.col_offset;
+        let start_col = 500;
         let sand = (start_col, start_row);
 
         match self.sand_move(sand) {
             Ok((new_col, new_row)) => {
-                self.data[new_row][new_col] = Tile::Sand;
+                self.table.insert((new_row, new_col), Tile::Sand);
                 self.sand_count += 1;
                 Some(self.sand_count)
             }
@@ -161,29 +113,31 @@ impl Cave {
         }
     }
 
-    fn handle_sand_move(&self, row: usize, col: usize) -> Result<(usize, usize), MoveErr> {
-        if row >= self.row_count || col >= self.col_count {
+    fn handle_sand_move(&self, col: usize, row: usize) -> Result<(usize, usize), MoveErr> {
+        if row > *self.table.row_max() || col > *self.table.col_max() || col < *self.table.col_min()
+        {
             return Err(MoveErr::Abyss);
         }
-        match &self.data[row][col] {
+
+        match &self.table.get((row, col)) {
             Tile::Rock | Tile::Sand => Err(MoveErr::Blocked),
             Tile::Air => Ok((col, row)),
         }
     }
 
     fn sand_move_down(&self, (col, row): (usize, usize)) -> Result<(usize, usize), MoveErr> {
-        self.handle_sand_move(row + 1, col)
+        self.handle_sand_move(col, row + 1)
     }
 
     fn sand_move_left(&self, (col, row): (usize, usize)) -> Result<(usize, usize), MoveErr> {
         if col == 0 {
             return Err(MoveErr::Abyss);
         }
-        self.handle_sand_move(row + 1, col - 1)
+        self.handle_sand_move(col - 1, row + 1)
     }
 
     fn sand_move_right(&self, (col, row): (usize, usize)) -> Result<(usize, usize), MoveErr> {
-        self.handle_sand_move(row + 1, col + 1)
+        self.handle_sand_move(col + 1, row + 1)
     }
 }
 
@@ -197,37 +151,48 @@ fn make_range(lhs: usize, rhs: usize) -> RangeInclusive<usize> {
 
 impl Display for Cave {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let result = self
-            .data
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|t| match t {
-                        Tile::Air => ".",
-                        Tile::Rock => "#",
-                        Tile::Sand => "o",
-                    })
-                    .fold(String::from(""), |acc, item| acc.add(item))
-            })
-            .enumerate()
-            .fold("".to_string(), |mut acc, (row_num, item)| {
-                write!(acc, "\n{} {}", row_num, item).unwrap();
-                acc
-            });
-        writeln!(f, "{}", result)
+        writeln!(f, "Sand Count: {}\n{}", self.sand_count, self.table)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Tile {
     Air,
     Rock,
     Sand,
 }
 
+impl Display for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Air => write!(f, "."),
+            Self::Rock => write!(f, "#"),
+            Self::Sand => write!(f, "o"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cave_from_vector_data(data: Vec<Vec<Tile>>) -> Cave {
+        let sand_count = data
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .filter_map(|t| match t {
+                        Tile::Sand => Some(1),
+                        _ => None,
+                    })
+                    .count()
+            })
+            .sum();
+
+        let table = SparseTable::from_vector_data(Tile::Air, data);
+
+        Cave { sand_count, table }
+    }
 
     #[test]
     fn test_part_one() {
@@ -237,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_cave_sand_move_down() {
-        let cave = Cave::from_vector_data(vec![
+        let cave = cave_from_vector_data(vec![
             vec![Tile::Air; 3],
             vec![Tile::Air; 3],
             vec![Tile::Air, Tile::Rock, Tile::Rock],
@@ -251,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_cave_sand_move_left() {
-        let cave = Cave::from_vector_data(vec![
+        let cave = cave_from_vector_data(vec![
             vec![Tile::Air; 3],
             vec![Tile::Air, Tile::Sand, Tile::Air],
             vec![Tile::Rock; 3],
@@ -264,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_cave_sand_move_right() {
-        let cave = Cave::from_vector_data(vec![
+        let cave = cave_from_vector_data(vec![
             vec![Tile::Air; 3],
             vec![Tile::Air, Tile::Sand, Tile::Air],
             vec![Tile::Rock; 3],
@@ -277,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_cave_sand_move() {
-        let cave = Cave::from_vector_data(vec![
+        let cave = cave_from_vector_data(vec![
             vec![Tile::Air; 5],
             vec![Tile::Rock, Tile::Air, Tile::Air, Tile::Air, Tile::Air],
             vec![Tile::Rock; 5],
@@ -289,7 +254,7 @@ mod tests {
         assert_eq!(cave.sand_move((3, 0)), Ok((3, 1)));
         assert_eq!(cave.sand_move((4, 0)), Err(MoveErr::Abyss));
 
-        let cave = Cave::from_vector_data(vec![
+        let cave = cave_from_vector_data(vec![
             vec![Tile::Air; 6],
             vec![
                 Tile::Rock,
