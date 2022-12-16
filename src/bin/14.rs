@@ -7,12 +7,9 @@ use std::{
 use itertools::Itertools;
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let mut cave = Cave::no_floor(input);
-    println!("{}", cave);
+    let mut cave = Cave::new(input);
 
-    while cave.drop_sand().is_some() {
-        println!("{}", cave);
-    }
+    while cave.drop_sand().is_some() {}
 
     Some(cave.sand_count)
 }
@@ -42,7 +39,7 @@ enum MoveErr {
 }
 
 impl Cave {
-    fn no_floor(input: &str) -> Cave {
+    fn new(input: &str) -> Cave {
         let rock_formations = Cave::parse_input(input);
         let col_bounds = rock_formations
             .iter()
@@ -54,37 +51,10 @@ impl Cave {
         let row_max = rock_formations.iter().flatten().map(|p| p.1).max().unwrap();
 
         let col_count = col_bounds.1 + 3 - col_bounds.0;
-        // println!("num_cols: {}", num_cols);
         let col_offset = col_bounds.0 - 1;
-        // println!("col_offset: {}", col_offset);
         let row_count = row_max + 1;
-        // println!("num_rows: {}", num_rows);
 
-        let mut data = vec![vec![Tile::Air; col_count]; row_count];
-
-        for f in rock_formations {
-            let mut pts = f.iter();
-
-            let mut p = pts.next().unwrap();
-            for n in pts {
-                // println!();
-                // println!("{:?} -> {:?}", p, n);
-                if n.1 == p.1 {
-                    for c in make_range(p.0, n.0) {
-                        // println!("add ({}, {})", p.1, c - col_offset);
-                        data[p.1][c - col_offset] = Tile::Rock;
-                    }
-                } else if n.0 == p.0 {
-                    for r in make_range(p.1, n.1) {
-                        // println!("add ({}, {})", r, p.0 - col_offset);
-                        data[r][p.0 - col_offset] = Tile::Rock;
-                    }
-                } else {
-                    panic!("something went wrong!")
-                }
-                p = n;
-            }
-        }
+        let data = Cave::make_data_vectors(rock_formations, col_offset, col_count, row_count);
 
         let mut cave = Cave::from_vector_data(data);
         cave.col_offset = col_offset;
@@ -125,6 +95,35 @@ impl Cave {
                     .collect_vec()
             })
             .collect_vec()
+    }
+
+    fn make_data_vectors(
+        rock_formations: Vec<Vec<(usize, usize)>>,
+        col_offset: usize,
+        col_count: usize,
+        row_count: usize,
+    ) -> Vec<Vec<Tile>> {
+        let mut data = vec![vec![Tile::Air; col_count]; row_count];
+        for f in rock_formations {
+            let mut pts = f.iter();
+
+            let mut p = pts.next().unwrap();
+            for n in pts {
+                if n.1 == p.1 {
+                    for c in make_range(p.0, n.0) {
+                        data[p.1][c - col_offset] = Tile::Rock;
+                    }
+                } else if n.0 == p.0 {
+                    for r in make_range(p.1, n.1) {
+                        data[r][p.0 - col_offset] = Tile::Rock;
+                    }
+                } else {
+                    panic!("something went wrong!")
+                }
+                p = n;
+            }
+        }
+        data
     }
 
     fn drop_sand(&mut self) -> Option<usize> {
