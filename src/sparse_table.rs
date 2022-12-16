@@ -1,4 +1,5 @@
 use std::cmp::Ordering::*;
+use std::collections::HashMap;
 use std::{collections::BTreeMap, fmt::Display};
 
 pub struct SparseTable<T>
@@ -7,6 +8,7 @@ where
 {
     data: BTreeMap<(usize, usize), T>,
     default: T,
+    row_defaults: HashMap<usize, T>,
     row_min: usize,
     row_max: usize,
     col_min: usize,
@@ -20,9 +22,11 @@ impl<T: Clone> SparseTable<T> {
 
     pub fn new_with_start_point(default: T, (row, col): (usize, usize)) -> Self {
         let data = BTreeMap::new();
+        let row_defaults = HashMap::new();
         SparseTable {
             data,
             default,
+            row_defaults,
             row_min: row,
             row_max: row,
             col_min: col,
@@ -38,7 +42,18 @@ impl<T: Clone> SparseTable<T> {
     }
 
     pub fn get(&self, (row, col): (usize, usize)) -> &T {
-        self.data.get(&(row, col)).unwrap_or(&self.default)
+        self.data
+            .get(&(row, col))
+            .unwrap_or_else(|| self.get_default_for_row(row))
+    }
+
+    pub fn get_default_for_row(&self, row: usize) -> &T {
+        self.row_defaults.get(&row).unwrap_or(&self.default)
+    }
+
+    pub fn add_row_default(&mut self, row: usize, default: T) -> Option<T> {
+        self.row_max = row.max(self.row_max);
+        self.row_defaults.insert(row, default)
     }
 
     pub fn col_min(&self) -> &usize {
@@ -84,7 +99,7 @@ impl<T: Clone + Display> Display for SparseTable<T> {
             for c in self.col_min..=self.col_max {
                 let res = match cell {
                     Some((k, v)) => match (r, c).cmp(k) {
-                        Less => write!(f, "{}", self.default),
+                        Less => write!(f, "{}", self.get_default_for_row(r)),
                         Equal => {
                             let result = write!(f, "{}", v);
                             cell = data_iter.next();
@@ -92,7 +107,7 @@ impl<T: Clone + Display> Display for SparseTable<T> {
                         }
                         Greater => panic!("Something went wrong!"),
                     },
-                    None => write!(f, "{}", self.default),
+                    None => write!(f, "{}", self.get_default_for_row(r)),
                 };
                 res?
             }
@@ -207,5 +222,32 @@ mod tests {
             "
             }
         );
+    }
+
+    #[test]
+    fn test_sparse_table_with_row_default() {
+        let mut table = SparseTable::new(0);
+        assert_eq!(*table.row_max(), 0);
+        assert_eq!(*table.get((3, 0)), 0);
+
+        table.add_row_default(3, 9);
+        assert_eq!(*table.row_max(), 3);
+        assert_eq!(*table.get((3, 0)), 9);
+
+        table.insert((0, 2), 1);
+        table.insert((3, 1), 2);
+        assert_eq!(*table.get((3, 0)), 9);
+        assert_eq!(*table.get((3, 1)), 2);
+        assert_eq!(*table.get((3, 2)), 9);
+
+        assert_eq!(
+            format!("{}", table),
+            indoc! {"
+            0 001
+            1 000
+            2 000
+            3 929
+        "}
+        )
     }
 }
