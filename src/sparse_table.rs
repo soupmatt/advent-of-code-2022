@@ -129,9 +129,9 @@ mod tests {
         assert_eq!(*table.get((2, 1)), 0);
 
         assert_eq!(*table.get((3, 4)), 0);
-        table.insert((3, 4), 4);
+        assert_eq!(table.insert((3, 4), 4), None);
         assert_eq!(*table.get((3, 4)), 4);
-        table.insert((3, 4), 6);
+        assert_eq!(table.insert((3, 4), 6), Some(4));
         assert_eq!(*table.get((3, 4)), 6);
     }
 
