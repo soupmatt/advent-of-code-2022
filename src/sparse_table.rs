@@ -79,11 +79,37 @@ impl<N: Integer + Hash + Copy, T: Clone> SparseTable<N, T> {
     }
 }
 
-impl<N: Integer + Hash + ToString + Display + Clone + ToPrimitive + Copy, T: Clone + Display>
-    Display for SparseTable<N, T>
+impl<N, T> Display for SparseTable<N, T>
+where
+    N: Integer + Hash + ToString + Display + Clone + ToPrimitive + Copy,
+    T: Clone + Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let row_num_width = self.row_max.to_string().len();
+        // header
+        let col_num_length: u32 = self.col_max.to_string().len().to_u32().unwrap();
+        let row_start = self.col_min.to_isize().unwrap();
+        let row_stop = self.col_max.to_isize().unwrap();
+        for col_digit in (0..col_num_length).rev() {
+            for _ in 0..=row_num_width {
+                write!(f, " ")?
+            }
+            let magnitude = 10isize.pow(col_digit);
+            for i in range_inclusive(row_start, row_stop) {
+                if i == row_start || i == row_stop || i % 5 == Zero::zero() {
+                    if i.abs() >= magnitude || (i == 0 && magnitude == 1) {
+                        write!(f, "{}", (i / magnitude).to_string().chars().last().unwrap())?
+                    } else {
+                        write!(f, " ")?
+                    }
+                } else {
+                    write!(f, " ")?
+                }
+            }
+            writeln!(f)?;
+        }
+
+        // main body
         let mut data_iter = self.data.iter();
         let mut cell = data_iter.next();
         for r in range_inclusive(self.row_min, self.row_max) {
@@ -149,6 +175,7 @@ mod tests {
         assert_eq!(
             format!("{}", table),
             indoc! { "
+              0
             0 0
             "
             }
@@ -168,6 +195,7 @@ mod tests {
         assert_eq!(
             format!("{}", table),
             indoc! { "
+              0    5
             0 002000
             1 000300
             2 000000
@@ -191,6 +219,8 @@ mod tests {
         assert_eq!(
             format!("{}", table),
             indoc! { "
+                         1    1   1
+               0    5    0    5   9
              0 00200000000000000000
              1 00000000000000000000
              2 00000000000000000000
@@ -235,6 +265,7 @@ mod tests {
         assert_eq!(
             format!("{}", table),
             indoc! {"
+              0 2
             0 001
             1 000
             2 000
