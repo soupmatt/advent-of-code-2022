@@ -9,8 +9,8 @@ pub fn part_one(input: &str) -> Option<usize> {
     not_beacon_count(input, 2_000_000)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<isize> {
+    run_part_two(input, (0, 4_000_000))
 }
 
 fn main() {
@@ -50,8 +50,8 @@ fn not_beacon_count(input: &str, row: isize) -> Option<usize> {
     Some(columns.len())
 }
 
-fn manhatten_distance(x1: isize, y1: isize, x2: isize, y2: isize) -> u32 {
-    (x1.abs_diff(x2) + y1.abs_diff(y2)).to_u32().unwrap()
+fn manhatten_distance(x1: isize, y1: isize, x2: isize, y2: isize) -> usize {
+    x1.abs_diff(x2) + y1.abs_diff(y2)
 }
 
 fn parse_input(input: &str) -> impl Iterator<Item = (isize, isize, isize, isize)> + '_ {
@@ -74,6 +74,58 @@ fn parse_input(input: &str) -> impl Iterator<Item = (isize, isize, isize, isize)
     })
 }
 
+fn make_sensors(input: &str) -> Vec<Sensor> {
+    parse_input(input)
+        .map(|(sx, sy, bx, by)| {
+            let dist = manhatten_distance(sx, sy, bx, by).to_usize().unwrap();
+            Sensor {
+                row: sy,
+                col: sx,
+                dist,
+            }
+        })
+        .collect()
+}
+
+struct Sensor {
+    row: isize,
+    col: isize,
+    dist: usize,
+}
+
+fn beacon_search(input: &str, (range_min, range_max): (isize, isize)) -> Option<(isize, isize)> {
+    let sensors = make_sensors(input);
+    for row in range_min..=range_max {
+        let mut col = range_min;
+        while col <= range_max {
+            if sensors.iter().all(|sensor| {
+                let dist = manhatten_distance(sensor.col, sensor.row, col, row);
+                if dist > sensor.dist {
+                    true
+                } else {
+                    let height = sensor.row.abs_diff(row);
+                    col = sensor.col + (sensor.dist - height).to_isize().unwrap();
+                    false
+                }
+            }) {
+                return Some((row, col));
+            }
+            col += 1;
+        }
+    }
+    None
+}
+
+fn run_part_two(input: &str, range: (isize, isize)) -> Option<isize> {
+    match beacon_search(input, range) {
+        Some((row, col)) => {
+            let result = col * 4_000_000 + row;
+            Some(result)
+        }
+        None => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,6 +139,7 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 15);
-        assert_eq!(part_two(&input), None);
+        let result = run_part_two(&input, (0, 20));
+        assert_eq!(result, Some(56000011));
     }
 }
