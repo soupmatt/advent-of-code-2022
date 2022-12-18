@@ -1,26 +1,32 @@
 use std::cmp::Ordering::*;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::{collections::BTreeMap, fmt::Display};
 
-pub struct SparseTable<T>
+use num_integer::Integer;
+use num_iter::range_inclusive;
+use num_traits::{ToPrimitive, Zero};
+
+pub struct SparseTable<N, T>
 where
     T: Clone,
+    N: Integer + Hash,
 {
-    data: BTreeMap<(usize, usize), T>,
+    data: BTreeMap<(N, N), T>,
     default: T,
-    row_defaults: HashMap<usize, T>,
-    row_min: usize,
-    row_max: usize,
-    col_min: usize,
-    col_max: usize,
+    row_defaults: HashMap<N, T>,
+    row_min: N,
+    row_max: N,
+    col_min: N,
+    col_max: N,
 }
 
-impl<T: Clone> SparseTable<T> {
+impl<N: Integer + Hash + Copy, T: Clone> SparseTable<N, T> {
     pub fn new(default: T) -> Self {
-        Self::new_with_start_point(default, (0, 0))
+        Self::new_with_start_point(default, (Zero::zero(), Zero::zero()))
     }
 
-    pub fn new_with_start_point(default: T, (row, col): (usize, usize)) -> Self {
+    pub fn new_with_start_point(default: T, (row, col): (N, N)) -> Self {
         let data = BTreeMap::new();
         let row_defaults = HashMap::new();
         SparseTable {
@@ -34,69 +40,55 @@ impl<T: Clone> SparseTable<T> {
         }
     }
 
-    pub fn insert(&mut self, (row, col): (usize, usize), value: T) -> Option<T> {
+    pub fn insert(&mut self, (row, col): (N, N), value: T) -> Option<T> {
         self.row_max = row.max(self.row_max);
         self.col_min = col.min(self.col_min);
         self.col_max = col.max(self.col_max);
         self.data.insert((row, col), value)
     }
 
-    pub fn get(&self, (row, col): (usize, usize)) -> &T {
+    pub fn get(&self, (row, col): (N, N)) -> &T {
         self.data
             .get(&(row, col))
             .unwrap_or_else(|| self.get_default_for_row(row))
     }
 
-    pub fn get_default_for_row(&self, row: usize) -> &T {
+    pub fn get_default_for_row(&self, row: N) -> &T {
         self.row_defaults.get(&row).unwrap_or(&self.default)
     }
 
-    pub fn add_row_default(&mut self, row: usize, default: T) -> Option<T> {
+    pub fn add_row_default(&mut self, row: N, default: T) -> Option<T> {
         self.row_max = row.max(self.row_max);
         self.row_defaults.insert(row, default)
     }
 
-    pub fn col_min(&self) -> &usize {
+    pub fn col_min(&self) -> &N {
         &self.col_min
     }
 
-    pub fn col_max(&self) -> &usize {
+    pub fn col_max(&self) -> &N {
         &self.col_max
     }
 
-    pub fn row_min(&self) -> &usize {
+    pub fn row_min(&self) -> &N {
         &self.row_min
     }
 
-    pub fn row_max(&self) -> &usize {
+    pub fn row_max(&self) -> &N {
         &self.row_max
     }
 }
 
-impl<T: Clone + PartialEq> SparseTable<T> {
-    pub fn from_vector_data(default: T, vec_data: Vec<Vec<T>>) -> Self {
-        let mut table = SparseTable::new(default.clone());
-
-        vec_data.iter().enumerate().for_each(|(r, row)| {
-            row.iter().enumerate().for_each(|(c, v)| {
-                if *v != default {
-                    table.insert((r, c), v.clone());
-                }
-            })
-        });
-
-        table
-    }
-}
-
-impl<T: Clone + Display> Display for SparseTable<T> {
+impl<N: Integer + Hash + ToString + Display + Clone + ToPrimitive + Copy, T: Clone + Display>
+    Display for SparseTable<N, T>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let row_num_width = self.row_max.to_string().len();
         let mut data_iter = self.data.iter();
         let mut cell = data_iter.next();
-        for r in self.row_min..=self.row_max {
+        for r in range_inclusive(self.row_min, self.row_max) {
             write!(f, "{:row_num_width$} ", r)?;
-            for c in self.col_min..=self.col_max {
+            for c in range_inclusive(self.col_min, self.col_max) {
                 let res = match cell {
                     Some((k, v)) => match (r, c).cmp(k) {
                         Less => write!(f, "{}", self.get_default_for_row(r)),
@@ -152,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_sparse_table_display() {
-        let table = SparseTable::new(0);
+        let table: SparseTable<i32, i32> = SparseTable::new(0);
 
         assert_eq!(
             format!("{}", table),

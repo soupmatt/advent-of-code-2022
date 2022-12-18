@@ -27,7 +27,7 @@ fn main() {
 }
 
 struct Cave {
-    table: SparseTable<Tile>,
+    table: SparseTable<usize, Tile>,
     sand_count: usize,
     with_floor: bool,
 }
@@ -214,7 +214,15 @@ mod tests {
             })
             .sum();
 
-        let mut table = SparseTable::from_vector_data(Tile::Air, data);
+        let mut table = SparseTable::new(Tile::Air);
+
+        data.iter().enumerate().for_each(|(r, row)| {
+            row.iter().enumerate().for_each(|(c, v)| {
+                if *v != Tile::Air {
+                    table.insert((r, c), *v);
+                }
+            })
+        });
 
         if with_floor {
             table.add_row_default(floor_row, Tile::Rock);
