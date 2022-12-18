@@ -41,10 +41,20 @@ impl<N: Integer + Hash + Copy, T: Clone> SparseTable<N, T> {
     }
 
     pub fn insert(&mut self, (row, col): (N, N), value: T) -> Option<T> {
+        self.update_min_max_vals(row, col);
+        self.data.insert((row, col), value)
+    }
+
+    fn update_min_max_vals(&mut self, row: N, col: N) {
+        self.row_min = row.min(self.row_min);
         self.row_max = row.max(self.row_max);
         self.col_min = col.min(self.col_min);
         self.col_max = col.max(self.col_max);
-        self.data.insert((row, col), value)
+    }
+
+    pub fn insert_only(&mut self, (row, col): (N, N), value: T) -> &T {
+        self.update_min_max_vals(row, col);
+        self.data.entry((row, col)).or_insert(value)
     }
 
     pub fn get(&self, (row, col): (N, N)) -> &T {
@@ -53,12 +63,12 @@ impl<N: Integer + Hash + Copy, T: Clone> SparseTable<N, T> {
             .unwrap_or_else(|| self.get_default_for_row(row))
     }
 
-    pub fn get_default_for_row(&self, row: N) -> &T {
+    fn get_default_for_row(&self, row: N) -> &T {
         self.row_defaults.get(&row).unwrap_or(&self.default)
     }
 
     pub fn add_row_default(&mut self, row: N, default: T) -> Option<T> {
-        self.row_max = row.max(self.row_max);
+        self.update_min_max_vals(row, self.col_min);
         self.row_defaults.insert(row, default)
     }
 
@@ -85,9 +95,13 @@ where
     T: Clone + Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let row_num_width = self.row_max.to_string().len();
+        let row_min_num_width = self.row_min.to_string().len();
+        let row_max_num_width = self.row_max.to_string().len();
+        let row_num_width = row_min_num_width.max(row_max_num_width);
         // header
-        let col_num_length: u32 = self.col_max.to_string().len().to_u32().unwrap();
+        let col_max_num_length: u32 = self.col_max.to_string().len().to_u32().unwrap();
+        let col_min_num_length: u32 = self.col_min.to_string().len().to_u32().unwrap();
+        let col_num_length: u32 = col_min_num_length.max(col_max_num_length);
         let row_start = self.col_min.to_isize().unwrap();
         let row_stop = self.col_max.to_isize().unwrap();
         for col_digit in (0..col_num_length).rev() {
@@ -143,10 +157,15 @@ mod tests {
 
     #[test]
     fn test_sparse_table() {
-        let mut table = SparseTable::new(0);
+        let mut table: SparseTable<i32, i32> = SparseTable::new(0);
 
         assert_eq!(*table.get((0, 0)), 0);
         assert_eq!(*table.get((27, 4399)), 0);
+
+        assert_eq!(*table.row_min(), 0);
+        assert_eq!(*table.row_max(), 0);
+        assert_eq!(*table.col_min(), 0);
+        assert_eq!(*table.col_max(), 0);
 
         table.insert((3, 5), 7);
         table.insert((0, 2), 2);
@@ -158,6 +177,11 @@ mod tests {
         assert_eq!(*table.get((1, 3)), 3);
         assert_eq!(*table.get((4, 2)), 9);
 
+        assert_eq!(*table.row_min(), 0);
+        assert_eq!(*table.row_max(), 4);
+        assert_eq!(*table.col_min(), 0);
+        assert_eq!(*table.col_max(), 5);
+
         assert_eq!(*table.get((0, 0)), 0);
         assert_eq!(*table.get((2, 1)), 0);
 
@@ -166,6 +190,16 @@ mod tests {
         assert_eq!(*table.get((3, 4)), 4);
         assert_eq!(table.insert((3, 4), 6), Some(4));
         assert_eq!(*table.get((3, 4)), 6);
+
+        assert_eq!(table.insert_only((3, 4), 7), &6);
+        assert_eq!(*table.get((3, 4)), 6);
+        assert_eq!(table.insert_only((3, 6), 7), &7);
+        assert_eq!(*table.get((3, 6)), 7);
+
+        assert_eq!(*table.row_min(), 0);
+        assert_eq!(*table.row_max(), 4);
+        assert_eq!(*table.col_min(), 0);
+        assert_eq!(*table.col_max(), 6);
     }
 
     #[test]
@@ -184,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_sparse_table_display_medium() {
-        let mut table = SparseTable::new(0);
+        let mut table: SparseTable<i32, i32> = SparseTable::new(0);
 
         table.insert((3, 5), 7);
         table.insert((0, 2), 2);
@@ -208,47 +242,60 @@ mod tests {
 
     #[test]
     fn test_sparse_table_display_large() {
-        let mut table = SparseTable::new(0);
+        let mut table: SparseTable<i32, i32> = SparseTable::new(0);
 
         table.insert((13, 5), 7);
         table.insert((0, 2), 2);
-        table.insert((19, 17), 3);
-        table.insert((8, 19), 9);
+        table.insert((-7, 19), 3);
+        table.insert((-9, 8), 9);
         table.insert((3, 4), 4);
+        table.insert((3, -2), 1);
 
-        assert_eq!(
-            format!("{}", table),
-            indoc! { "
-                         1    1   1
-               0    5    0    5   9
-             0 00200000000000000000
-             1 00000000000000000000
-             2 00000000000000000000
-             3 00004000000000000000
-             4 00000000000000000000
-             5 00000000000000000000
-             6 00000000000000000000
-             7 00000000000000000000
-             8 00000000000000000009
-             9 00000000000000000000
-            10 00000000000000000000
-            11 00000000000000000000
-            12 00000000000000000000
-            13 00000700000000000000
-            14 00000000000000000000
-            15 00000000000000000000
-            16 00000000000000000000
-            17 00000000000000000000
-            18 00000000000000000000
-            19 00000000000000000300
+        let actual = format!("{}", table);
+        let expected = indoc! { "
+                           1    1   1
+               2 0    5    0    5   9
+            -9 0000000000900000000000
+            -8 0000000000000000000000
+            -7 0000000000000000000003
+            -6 0000000000000000000000
+            -5 0000000000000000000000
+            -4 0000000000000000000000
+            -3 0000000000000000000000
+            -2 0000000000000000000000
+            -1 0000000000000000000000
+             0 0000200000000000000000
+             1 0000000000000000000000
+             2 0000000000000000000000
+             3 1000004000000000000000
+             4 0000000000000000000000
+             5 0000000000000000000000
+             6 0000000000000000000000
+             7 0000000000000000000000
+             8 0000000000000000000000
+             9 0000000000000000000000
+            10 0000000000000000000000
+            11 0000000000000000000000
+            12 0000000000000000000000
+            13 0000000700000000000000
             "
-            }
-        );
+        };
+
+        let act_vec: Vec<&str> = actual.lines().collect();
+        let exp_vec: Vec<&str> = expected.lines().collect();
+
+        assert_eq!(act_vec.len(), exp_vec.len());
+
+        for i in 0..act_vec.len() {
+            assert_eq!(act_vec[i], exp_vec[i]);
+        }
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_sparse_table_with_row_default() {
-        let mut table = SparseTable::new(0);
+        let mut table: SparseTable<i32, i32> = SparseTable::new(0);
         assert_eq!(*table.row_max(), 0);
         assert_eq!(*table.get((3, 0)), 0);
 
