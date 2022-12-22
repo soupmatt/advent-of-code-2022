@@ -1,13 +1,13 @@
-use std::{cell::RefCell, fmt::Display, ops::Add, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, ops::Add, rc::Rc};
 
 pub fn part_one(input: &str) -> Option<usize> {
     let mut cave = Cave::build(input);
-    cave.run_rounds(2022);
-    Some(cave.highest_point())
+    Some(cave.run_rounds(2022))
 }
 
-pub fn part_two(_input: &str) -> Option<usize> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let mut cave = Cave::build(input);
+    Some(cave.run_rounds(1_000_000_000_000))
 }
 
 fn main() {
@@ -42,11 +42,15 @@ struct FallingRock {
 }
 
 struct Cave {
-    jets: Rc<RefCell<dyn Iterator<Item = Jet>>>,
-    rock_shapes: Rc<RefCell<dyn Iterator<Item = RockShape>>>,
+    jets: Rc<RefCell<Vec<Jet>>>,
+    rock_shapes: Rc<RefCell<Vec<RockShape>>>,
     columns: Rc<RefCell<[Vec<Tile>; 7]>>,
     highest_point: Rc<RefCell<usize>>,
     width: usize,
+    rock_index: usize,
+    jet_index: usize,
+    rounds_run: usize,
+    memory: HashMap<(usize, usize), (usize, usize)>,
     fr: Rc<RefCell<Option<FallingRock>>>,
 }
 
@@ -62,8 +66,9 @@ impl Cave {
     }
 
     fn new(jets: Vec<Jet>) -> Cave {
-        let jets = Rc::new(RefCell::new(jets.into_iter().cycle()));
-        let rock_shapes = Rc::new(RefCell::new(build_rocks().into_iter().cycle()));
+        let jets = Rc::new(RefCell::new(jets));
+        let rock_shapes = build_rocks();
+        let rock_shapes = Rc::new(RefCell::new(rock_shapes));
         let columns = Rc::new(RefCell::new([
             vec![],
             vec![],
@@ -73,25 +78,27 @@ impl Cave {
             vec![],
             vec![],
         ]));
+        let jet_index = jets.borrow().len() - 1;
+        let rock_index = rock_shapes.borrow().len() - 1;
+
         Cave {
             jets,
             rock_shapes,
             columns,
             highest_point: Rc::new(RefCell::new(0usize)),
             width: 7,
+            jet_index,
+            rock_index,
+            rounds_run: 0,
+            memory: HashMap::new(),
             fr: Rc::new(RefCell::new(None)),
         }
     }
 
     fn drop_next_rock(&mut self) {
+        self.rock_index = (self.rock_index + 1) % self.rock_shapes.borrow().len();
         self.fr.replace(Some(FallingRock {
-            rock_shape: self
-                .rock_shapes
-                .borrow_mut()
-                .next()
-                .as_ref()
-                .unwrap()
-                .clone(),
+            rock_shape: self.rock_shapes.borrow()[self.rock_index].clone(),
             bottom_left: Point {
                 col: 2,
                 row: self.highest_point.borrow().add(3),
@@ -104,11 +111,11 @@ impl Cave {
         );
 
         loop {
-            let next = self.jets.borrow_mut().next();
+            self.jet_index = (self.jet_index + 1) % self.jets.borrow().len();
+            let next = self.jets.borrow()[self.jet_index];
             match next {
-                Some(Jet::Left) => self.handle_move(MoveDirection::Left),
-                Some(Jet::Right) => self.handle_move(MoveDirection::Right),
-                None => false,
+                Jet::Left => self.handle_move(MoveDirection::Left),
+                Jet::Right => self.handle_move(MoveDirection::Right),
             };
 
             if !self.handle_move(MoveDirection::Down) {
@@ -205,10 +212,49 @@ impl Cave {
         }
     }
 
-    fn run_rounds(&mut self, num: usize) {
-        for _ in 0..num {
-            self.drop_next_rock();
+    fn run_round(&mut self) -> Result<(usize, usize), ()> {
+        self.drop_next_rock();
+        self.rounds_run += 1;
+        let key = (self.rock_index, self.jet_index);
+        if self.memory.contains_key(&key) {
+            let prev_data = self.memory.get(&key).unwrap();
+            Ok((
+                self.rounds_run - prev_data.0,
+                self.highest_point() - prev_data.1,
+            ))
+        } else {
+            self.memory.insert(
+                (self.rock_index, self.jet_index),
+                (self.rounds_run, self.highest_point()),
+            );
+            Err(())
         }
+    }
+
+    fn run_rounds(&mut self, num: usize) -> usize {
+        let mut additional_height = 0usize;
+        let mut i = 0usize;
+        let mut num_matches = 0;
+        while i < num {
+            if let Ok((rounds, height_change)) = self.run_round() {
+                num_matches += 1;
+                if num_matches > 4 {
+                    let remaining_rounds = num - i;
+                    let skipable_cycles = remaining_rounds / rounds;
+                    additional_height = height_change * skipable_cycles;
+                    i += skipable_cycles * rounds + 1;
+                    break;
+                }
+            } else {
+                num_matches = 0;
+            }
+            i += 1;
+        }
+        while i < num {
+            self.drop_next_rock();
+            i += 1;
+        }
+        self.highest_point() + additional_height
     }
 
     fn highest_point(&self) -> usize {
@@ -343,7 +389,7 @@ mod tests {
     #[test]
     fn test_new() {
         let jets = vec![Jet::Left, Jet::Right];
-        let cave = Cave::new(jets.clone());
+        let cave = Cave::new(jets);
 
         //assert starting state
         assert_eq!(cave.highest_point(), 0);
@@ -360,34 +406,11 @@ mod tests {
                 Vec::<Tile>::new(),
             ]
         );
-
-        // jets iterator should cycle
-        let mut actual_jets = cave.jets.borrow_mut();
-        assert_eq!(actual_jets.next().unwrap(), jets[0]);
-        assert_eq!(actual_jets.next().unwrap(), jets[1]);
-        assert_eq!(actual_jets.next().unwrap(), jets[0]);
-        assert_eq!(actual_jets.next().unwrap(), jets[1]);
-        assert_eq!(actual_jets.next().unwrap(), jets[0]);
-        assert_eq!(actual_jets.next().unwrap(), jets[1]);
-
-        // rock_shapes iterator should cycle
-        let rock_shapes = build_rocks();
-        let mut actual_rock_shapes = cave.rock_shapes.borrow_mut();
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[0]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[1]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[2]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[3]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[4]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[0]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[1]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[2]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[3]);
-        assert_eq!(actual_rock_shapes.next().unwrap(), rock_shapes[4]);
     }
 
     #[test]
     fn test_display() {
-        let cave = Cave::new(vec![]);
+        let cave = Cave::new(vec![Jet::Left]);
 
         assert_eq!(
             format!("{}", cave),
@@ -539,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_handle_settled_rock() {
-        let mut cave = Cave::new(vec![]);
+        let mut cave = Cave::new(vec![Jet::Left]);
 
         assert_eq!(cave.highest_point(), 0);
         assert_eq!(
@@ -657,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_handle_move() {
-        let mut cave = Cave::new(vec![]);
+        let mut cave = Cave::new(vec![Jet::Left]);
         let rock_shapes = build_rocks();
         let block = &rock_shapes[4];
 
@@ -773,7 +796,7 @@ mod tests {
 
     #[test]
     fn test_handle_move_with_collisions() {
-        let mut cave = Cave::new(vec![]);
+        let mut cave = Cave::new(vec![Jet::Left]);
         let rock_shapes = build_rocks();
         let block = &rock_shapes[4];
 
@@ -896,7 +919,7 @@ mod tests {
 
     #[test]
     fn test_drop_next_rock() {
-        let mut cave = Cave::new(vec![]);
+        let mut cave = Cave::new(vec![Jet::Left, Jet::Right]);
 
         assert_eq!(
             format!("{}", cave),
@@ -940,6 +963,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 17);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(1514285714288));
     }
 }
