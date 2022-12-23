@@ -1,54 +1,51 @@
-use std::{cell::RefCell, cmp::Ordering::*, rc::Rc};
-
 use itertools::Itertools;
+use num_traits::ToPrimitive;
+use std::collections::VecDeque;
 
-pub fn part_one(input: &str) -> Option<i32> {
-    let mut list = MixList::parse_input(input);
+pub fn part_one(input: &str) -> Option<i64> {
+    let mut list = MixList::parse_input(input, 1);
     list.mix_list();
-    list.part_one_answer()
+    list.get_answer()
 }
 
-pub fn part_two(_input: &str) -> Option<i32> {
-    None
+pub fn part_two(input: &str) -> Option<i64> {
+    let mut list = MixList::parse_input(input, 811589153);
+    for _ in 0..10 {
+        list.mix_list();
+    }
+    list.get_answer()
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Node {
-    value: i32,
+    value: i64,
     index: usize,
 }
 
 struct MixList {
-    orig_list: Vec<Rc<RefCell<Node>>>,
-    list: Vec<Rc<RefCell<Node>>>,
+    list: VecDeque<Node>,
 }
 
 impl MixList {
-    fn parse_input(input: &str) -> MixList {
-        let orig_list = input
+    fn parse_input(input: &str, decryption_key: i64) -> MixList {
+        let list: VecDeque<Node> = input
             .lines()
             .enumerate()
-            .map(|(index, line)| {
-                Rc::new(RefCell::new(Node {
-                    value: line.parse().unwrap(),
-                    index,
-                }))
+            .map(|(index, line)| Node {
+                value: line.parse::<i64>().unwrap() * decryption_key,
+                index,
             })
-            .collect_vec();
-        let list = orig_list.clone();
-        MixList { orig_list, list }
+            .collect();
+        MixList { list }
     }
 
-    fn part_one_answer(&self) -> Option<i32> {
+    fn get_answer(&self) -> Option<i64> {
         let len = self.list.len();
-        let zero_index = self
-            .list
-            .iter()
-            .position(|v| v.borrow().value == 0)
-            .unwrap();
+        let zero_index = self.list.iter().position(|v| v.value == 0).unwrap();
 
-        let one = self.list[(zero_index + 1000) % len].as_ref().borrow().value;
-        let two = self.list[(zero_index + 2000) % len].as_ref().borrow().value;
-        let three = self.list[(zero_index + 3000) % len].as_ref().borrow().value;
+        let one = self.list[(zero_index + 1000) % len].value;
+        let two = self.list[(zero_index + 2000) % len].value;
+        let three = self.list[(zero_index + 3000) % len].value;
 
         Some(one + two + three)
     }
@@ -59,56 +56,24 @@ impl MixList {
 
     fn mix_list(&mut self) {
         for i in 0..self.len() {
-            let val: i32;
-            let node_rc = Rc::clone(&self.orig_list[i]);
-            {
-                let node = node_rc.borrow();
-                val = node.value;
-            }
-            match val.cmp(&0) {
-                Greater => {
-                    for _ in 0..val {
-                        self.swap_right(node_rc.clone());
-                    }
-                }
-                Less => {
-                    for _ in val..0 {
-                        self.swap_left(node_rc.clone());
-                    }
-                }
-                Equal => (),
-            }
+            self.run_mix_step(i);
         }
     }
 
-    fn swap_right(&mut self, node: Rc<RefCell<Node>>) {
-        let node_idx = node.borrow().index;
-        let right_idx = self.increase_idx(node_idx);
-        let right = self.list[right_idx].clone();
-        self.list.swap(node_idx, right_idx);
-        node.borrow_mut().index = right_idx;
-        right.borrow_mut().index = node_idx;
-    }
+    fn run_mix_step(&mut self, i: usize) {
+        let (idx, node) = self.list.iter().find_position(|n| n.index == i).unwrap();
 
-    fn swap_left(&mut self, node: Rc<RefCell<Node>>) {
-        let node_idx = node.borrow().index;
-        let left_idx = self.decrease_idx(node_idx);
-        let left = self.list[left_idx].clone();
-        self.list.swap(node_idx, left_idx);
-        node.borrow_mut().index = left_idx;
-        left.borrow_mut().index = node_idx;
-    }
+        let idx_i64 = idx.to_i64().unwrap();
+        let len = self.len().to_i64().unwrap();
+        let mut new_position = (idx_i64 + node.value) % (len - 1);
 
-    fn increase_idx(&self, idx: usize) -> usize {
-        (idx + 1) % self.len()
-    }
-
-    fn decrease_idx(&self, idx: usize) -> usize {
-        if idx == 0 {
-            self.len() - 1
-        } else {
-            idx - 1
+        if new_position < 0 {
+            new_position += len - 1;
         }
+
+        let n = self.list.remove(idx);
+        self.list
+            .insert(new_position.to_usize().unwrap(), n.unwrap());
     }
 }
 
@@ -129,17 +94,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mix_list() {
-        let input = advent_of_code::read_file("examples", 20);
-        let mut list = MixList::parse_input(&input);
-        list.mix_list();
-        let actual = list.list.iter().map(|n| n.borrow().value).collect_vec();
-        assert_eq!(actual, vec![-2, 1, 2, -3, 4, 0, 3])
-    }
-
-    #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 20);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(1623178306));
     }
 }
