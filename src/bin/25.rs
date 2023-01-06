@@ -33,7 +33,7 @@ fn int_to_snafu(input: i64) -> String {
     let mut chars: Vec<char> = vec![];
     let input_i64: i64 = input.to_i64().unwrap();
     let mut builder: i64 = 0;
-    for digit in (1..=len).into_iter().rev() {
+    for _ in 1..=len {
         let next = input_i64 - builder;
         let check: i64 = (next + twos) / (fives / 5) - 2;
 
