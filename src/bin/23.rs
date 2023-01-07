@@ -6,7 +6,7 @@ use strum::{EnumCount, EnumIter, IntoEnumIterator};
 
 pub fn part_one(input: &str) -> Option<usize> {
     let mut crater = Crater::parse_input(input);
-    for i in 0..10 {
+    for _ in 0..10 {
         crater.run_round();
     }
     Some(crater.part_one_answer())
