@@ -12,8 +12,13 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(crater.part_one_answer())
 }
 
-pub fn part_two(_input: &str) -> Option<usize> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let mut crater = Crater::parse_input(input);
+    let mut count = 1;
+    while crater.run_round() > 0 {
+        count += 1;
+    }
+    Some(count)
 }
 
 #[derive(EnumIter, EnumCount, Clone, Copy, Debug)]
@@ -75,9 +80,9 @@ impl Crater {
         }
     }
 
-    fn run_round(&mut self) {
+    fn run_round(&mut self) -> usize {
         self.propose_moves();
-        self.execute_moves();
+        self.execute_moves()
     }
 
     fn propose_moves(&mut self) {
@@ -96,15 +101,18 @@ impl Crater {
         });
     }
 
-    fn execute_moves(&mut self) {
+    fn execute_moves(&mut self) -> usize {
+        let mut num_moves = 0;
         self.proposed_moves.iter_mut().for_each(|(dest, elves)| {
             if elves.len() == 1 {
+                num_moves += 1;
                 let from = &elves[0];
                 self.positions.remove(from);
                 self.positions.insert(*dest);
             }
             elves.clear();
         });
+        num_moves
     }
 
     fn propose_move(&self, &(x, y): &Elf, dirs: &[Dir]) -> Option<(Elf, Elf)> {
@@ -187,6 +195,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 23);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(20));
     }
 }
