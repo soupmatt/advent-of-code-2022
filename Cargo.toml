@@ -18,3 +18,4 @@ itertools = "0.10.5"
 num-integer = "0.1.45"
 num-traits = "0.2.15"
 num-iter = "0.1.43"
+strum = { version = "0.24.1", features = ["derive"] }
