@@ -8,17 +8,28 @@ use pathfinding::prelude::fringe;
 pub fn part_one(input: &str) -> Option<usize> {
     let valley = WindyValley::parse_input(input);
 
-    let results = fringe(
-        &valley,
-        |v| v.possible_next_steps(),
-        |v| v.minimum_cost(),
-        |v| v.position == v.exit,
-    );
-    results.map(|(valleys, _)| valleys.len() - 1)
+    let results = valley.run_trip();
+    results.map(|(_, c)| c)
 }
 
-pub fn part_two(_input: &str) -> Option<usize> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let valley = WindyValley::parse_input(input);
+
+    let (v1_path, c1) = valley.run_trip().unwrap();
+
+    let mut v2 = v1_path.last().unwrap().to_owned();
+    v2.entrance = valley.exit;
+    v2.exit = valley.entrance;
+
+    let (v2_path, c2) = v2.run_trip().unwrap();
+
+    let mut v3 = v2_path.last().unwrap().to_owned();
+    v3.entrance = v2.exit;
+    v3.exit = v2.entrance;
+
+    let (_, c3) = v3.run_trip()?;
+
+    Some(c1 + c2 + c3)
 }
 
 fn main() {
@@ -49,12 +60,13 @@ struct WindyValley {
     east_boundary: usize,
     south_boundary: usize,
     position: Pos,
+    entrance: Pos,
     exit: Pos,
     blizzards: Vec<Bliz>,
 }
 
 impl WindyValley {
-    const ENTRANCE: Pos = Pos(1, 0);
+    const INITIAL_ENTRANCE: Pos = Pos(1, 0);
 
     fn parse_input(input: &str) -> WindyValley {
         let mut exit = Pos(0, 0);
@@ -95,7 +107,8 @@ impl WindyValley {
         WindyValley {
             east_boundary,
             south_boundary,
-            position: WindyValley::ENTRANCE,
+            position: WindyValley::INITIAL_ENTRANCE,
+            entrance: WindyValley::INITIAL_ENTRANCE,
             exit,
             blizzards,
         }
@@ -108,25 +121,31 @@ impl WindyValley {
         result.insert(self.position);
 
         // go north
-        if self.position.1 > 1 {
-            result.insert(Pos(self.position.0, self.position.1 - 1));
+        if self.position.1 >= 1 {
+            let pos = Pos(self.position.0, self.position.1 - 1);
+            if pos.1 > 0 || pos == self.exit || pos == self.entrance {
+                result.insert(pos);
+            }
         }
 
         // go south
-        if self.position.1 < self.south_boundary - 1
-            || self.position == Pos(self.exit.0, self.exit.1 - 1)
-        {
-            result.insert(Pos(self.position.0, self.position.1 + 1));
+        if self.position.1 < self.south_boundary {
+            let pos = Pos(self.position.0, self.position.1 + 1);
+            if pos.1 < self.south_boundary || pos == self.exit || pos == self.entrance {
+                result.insert(pos);
+            }
         }
 
-        // go west
-        if self.position.0 > 1 && self.position.1 != 0 {
-            result.insert(Pos(self.position.0 - 1, self.position.1));
-        }
+        if self.position.1 != 0 && self.position.1 != self.south_boundary {
+            // go west
+            if self.position.0 > 1 {
+                result.insert(Pos(self.position.0 - 1, self.position.1));
+            }
 
-        // go east
-        if self.position.0 < self.east_boundary - 1 && self.position.1 != 0 {
-            result.insert(Pos(self.position.0 + 1, self.position.1));
+            // go east
+            if self.position.0 < self.east_boundary - 1 {
+                result.insert(Pos(self.position.0 + 1, self.position.1));
+            }
         }
 
         result
@@ -196,21 +215,41 @@ impl WindyValley {
 
         result
     }
+
+    fn run_trip(&self) -> Option<(Vec<WindyValley>, usize)> {
+        fringe(
+            self,
+            |v| v.possible_next_steps(),
+            |v| v.minimum_cost(),
+            |v| v.position == v.exit,
+        )
+    }
 }
 
 impl Display for WindyValley {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // current position
+        writeln!(f, "Pos: ({}, {})", self.position.0, self.position.1)?;
         // first row
-        write!(f, "#")?;
-        if self.position == Self::ENTRANCE {
-            write!(f, "E")?;
-        } else {
-            write!(f, ".")?;
+        for x in 0..=self.east_boundary {
+            let spot = Pos(x, 0);
+            if spot == self.entrance {
+                if self.position == self.entrance {
+                    write!(f, "E")?;
+                } else {
+                    write!(f, ".")?;
+                }
+            } else if spot == self.exit {
+                if self.position == self.exit {
+                    write!(f, "E")?;
+                } else {
+                    write!(f, ".")?;
+                }
+            } else {
+                write!(f, "#")?;
+            }
         }
-        for _ in 2..self.east_boundary {
-            write!(f, "#")?;
-        }
-        writeln!(f, "#")?;
+        writeln!(f)?;
 
         let bmap: BTreeMap<Pos, Vec<&Bliz>> =
             self.blizzards.iter().fold(BTreeMap::new(), |mut m, b| {
@@ -248,7 +287,14 @@ impl Display for WindyValley {
 
         // last row
         for x in 0..=self.east_boundary {
-            if x == self.exit.0 {
+            let spot = Pos(x, self.south_boundary);
+            if spot == self.entrance {
+                if self.position == self.entrance {
+                    write!(f, "E")?;
+                } else {
+                    write!(f, ".")?;
+                }
+            } else if spot == self.exit {
                 if self.position == self.exit {
                     write!(f, "E")?;
                 } else {
@@ -275,6 +321,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 24);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(54));
     }
 }
