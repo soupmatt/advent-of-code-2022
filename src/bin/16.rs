@@ -4,10 +4,7 @@ extern crate lazy_static;
 use std::collections::BTreeMap;
 
 use itertools::Itertools;
-use pathfinding::{
-    prelude::dijkstra,
-    prelude::{astar, fringe},
-};
+use pathfinding::{prelude::astar, prelude::dijkstra};
 use regex::Regex;
 
 pub fn part_one(input: &str) -> Option<usize> {
