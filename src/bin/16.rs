@@ -4,18 +4,43 @@ extern crate lazy_static;
 use std::collections::BTreeMap;
 
 use itertools::Itertools;
-use pathfinding::{prelude::dijkstra, prelude::fringe};
+use pathfinding::{prelude::astar, prelude::dijkstra};
 use regex::Regex;
 
 pub fn part_one(input: &str) -> Option<usize> {
     let cave = CaveSystem::parse_input(input);
-    let (steps, _) = fringe(
+    let (steps, _) = astar(
         &cave,
         |c| c.successors(),
-        |c| c.potential_pressure_drop,
-        |c| c.potential_pressure_drop == 0 || c.step_number == 30,
+        |c| c.estimated_cost,
+        |c| c.unrealized_pressure_drop == 0 || c.step_number >= CaveSystem::NUM_MINUTES,
     )
     .unwrap();
+
+    for c in steps.iter() {
+        println!("Step {}", c.step_number);
+        println!("Location {}", c.location);
+        println!(
+            "Open Valves: {:?}",
+            c.valves
+                .iter()
+                .filter(|(_, v)| v.open)
+                .map(|(name, v)| format!("{}: {}", name, v.rate))
+                .collect_vec()
+        );
+        println!(
+            "Closed Valves: {:?}",
+            c.valves
+                .iter()
+                .filter(|(_, v)| !v.open)
+                .map(|(name, v)| format!("{}: {}", name, v.rate))
+                .collect_vec()
+        );
+        println!("Unrealized Pressure Drop {}", c.unrealized_pressure_drop);
+        println!("Pressure Release rate: {}", c.pressure_drop_rate);
+        println!("Pressure Released so far: {}", c.pressure_dropped_so_far);
+        println!();
+    }
 
     Some(steps.last().unwrap().total_pressure_drop())
 }
@@ -26,7 +51,6 @@ pub fn part_two(_input: &str) -> Option<usize> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Valve {
-    name: String,
     rate: usize,
     open: bool,
 }
@@ -38,13 +62,16 @@ struct CaveSystem {
     valves: BTreeMap<Node, Valve>,
     tunnels: BTreeMap<Node, Vec<Node>>,
     location: Node,
-    potential_pressure_drop: usize,
+    unrealized_pressure_drop: usize,
     pressure_drop_rate: usize,
     pressure_dropped_so_far: usize,
     step_number: usize,
+    estimated_cost: usize,
 }
 
 impl CaveSystem {
+    const NUM_MINUTES: usize = 30;
+
     fn parse_input(input: &str) -> CaveSystem {
         lazy_static! {
             static ref RE: Regex =
@@ -61,27 +88,24 @@ impl CaveSystem {
             let rate: usize = caps.get(2).unwrap().as_str().parse().unwrap();
             let links = caps.get(3).unwrap().as_str().split(", ");
 
-            valves.insert(
-                name.to_string(),
-                Valve {
-                    name: name.to_string(),
-                    rate,
-                    open: false,
-                },
-            );
+            if rate > 0 {
+                valves.insert(name.to_string(), Valve { rate, open: false });
+            };
+
             tunnels.insert(name.to_string(), links.map(|t| t.to_string()).collect());
         });
 
-        let potential_pressure_drop = valves.values().map(|v| v.rate).sum();
+        let unrealized_pressure_drop = valves.values().map(|v| v.rate).sum();
 
         CaveSystem {
             valves,
             tunnels,
             location: "AA".to_string(),
-            potential_pressure_drop,
+            unrealized_pressure_drop,
             pressure_drop_rate: 0,
             pressure_dropped_so_far: 0,
             step_number: 0,
+            estimated_cost: 0,
         }
     }
 
@@ -93,7 +117,7 @@ impl CaveSystem {
             .valves
             .iter()
             .filter_map(|(k, v)| {
-                if v.open || v.rate == 0 {
+                if v.open {
                     None
                 } else {
                     cost_per_minute += v.rate;
@@ -126,36 +150,27 @@ impl CaveSystem {
     }
 
     fn advance_minutes(&mut self, dest: &str, steps: usize) {
-        let mut step_delta = steps;
-        if self.step_number + steps > 30 {
-            step_delta = self.step_number + steps - 30;
-            self.step_number = 30;
+        if self.step_number + steps > Self::NUM_MINUTES {
+            self.step_number = Self::NUM_MINUTES;
         } else {
             self.step_number += steps;
             self.location = dest.to_string();
         }
 
-        self.pressure_dropped_so_far += self.pressure_drop_rate * step_delta;
+        let v = self.valves.get_mut(dest).unwrap();
 
-        self.activate_valve(dest);
-    }
-
-    fn activate_valve(&mut self, valve_name: &str) {
-        let v = self.valves.get_mut(valve_name).unwrap();
         if !v.open {
             v.open = true;
-            self.potential_pressure_drop -= v.rate;
+            self.unrealized_pressure_drop -= v.rate;
             self.pressure_drop_rate += v.rate;
+            self.pressure_dropped_so_far += v.rate * (Self::NUM_MINUTES - self.step_number);
         }
+
+        self.estimated_cost = self.unrealized_pressure_drop / 10;
     }
 
     fn total_pressure_drop(&self) -> usize {
-        let minutes_left = 30 - self.step_number;
-        (self.total_potential_pressure_drop() * minutes_left) + self.pressure_dropped_so_far
-    }
-
-    fn total_potential_pressure_drop(&self) -> usize {
-        self.valves.values().map(|v| v.rate).sum()
+        self.pressure_dropped_so_far
     }
 }
 
