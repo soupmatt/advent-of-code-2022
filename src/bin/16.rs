@@ -4,18 +4,45 @@ extern crate lazy_static;
 use std::collections::BTreeMap;
 
 use itertools::Itertools;
-use pathfinding::{prelude::dijkstra, prelude::fringe};
+use pathfinding::{
+    prelude::dijkstra,
+    prelude::{astar, fringe},
+};
 use regex::Regex;
 
 pub fn part_one(input: &str) -> Option<usize> {
     let cave = CaveSystem::parse_input(input);
-    let (steps, _) = fringe(
+    let (steps, _) = astar(
         &cave,
         |c| c.successors(),
         |c| c.potential_pressure_drop,
         |c| c.potential_pressure_drop == 0 || c.step_number == 30,
     )
     .unwrap();
+
+    for c in steps.iter() {
+        println!("Step {}", c.step_number);
+        println!("Location {}", c.location);
+        println!(
+            "Open Valves: {:?}",
+            c.valves
+                .values()
+                .filter(|v| v.open)
+                .map(|v| format!("{}: {}", v.name, v.rate))
+                .collect_vec()
+        );
+        println!(
+            "Closed Valves: {:?}",
+            c.valves
+                .values()
+                .filter(|v| !v.open)
+                .map(|v| format!("{}: {}", v.name, v.rate))
+                .collect_vec()
+        );
+        println!("Pressure Release rate: {}", c.pressure_drop_rate);
+        println!("Pressure Released so far: {}", c.pressure_dropped_so_far);
+        println!();
+    }
 
     Some(steps.last().unwrap().total_pressure_drop())
 }
@@ -61,14 +88,17 @@ impl CaveSystem {
             let rate: usize = caps.get(2).unwrap().as_str().parse().unwrap();
             let links = caps.get(3).unwrap().as_str().split(", ");
 
-            valves.insert(
-                name.to_string(),
-                Valve {
-                    name: name.to_string(),
-                    rate,
-                    open: false,
-                },
-            );
+            if rate > 0 {
+                valves.insert(
+                    name.to_string(),
+                    Valve {
+                        name: name.to_string(),
+                        rate,
+                        open: false,
+                    },
+                );
+            };
+
             tunnels.insert(name.to_string(), links.map(|t| t.to_string()).collect());
         });
 
@@ -93,7 +123,7 @@ impl CaveSystem {
             .valves
             .iter()
             .filter_map(|(k, v)| {
-                if v.open || v.rate == 0 {
+                if v.open {
                     None
                 } else {
                     cost_per_minute += v.rate;
