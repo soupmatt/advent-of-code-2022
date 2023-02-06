@@ -127,13 +127,13 @@ where
         let mut data_iter = self.data.iter();
         let mut cell = data_iter.next();
         for r in range_inclusive(self.row_min, self.row_max) {
-            write!(f, "{:row_num_width$} ", r)?;
+            write!(f, "{r:row_num_width$} ")?;
             for c in range_inclusive(self.col_min, self.col_max) {
                 let res = match cell {
                     Some((k, v)) => match (r, c).cmp(k) {
                         Less => write!(f, "{}", self.get_default_for_row(r)),
                         Equal => {
-                            let result = write!(f, "{}", v);
+                            let result = write!(f, "{v}");
                             cell = data_iter.next();
                             result
                         }
@@ -207,7 +207,7 @@ mod tests {
         let table: SparseTable<i32, i32> = SparseTable::new(0);
 
         assert_eq!(
-            format!("{}", table),
+            format!("{table}"),
             indoc! { "
               0
             0 0
@@ -227,7 +227,7 @@ mod tests {
         table.insert((3, 4), 4);
 
         assert_eq!(
-            format!("{}", table),
+            format!("{table}"),
             indoc! { "
               0    5
             0 002000
@@ -251,7 +251,7 @@ mod tests {
         table.insert((3, 4), 4);
         table.insert((3, -2), 1);
 
-        let actual = format!("{}", table);
+        let actual = format!("{table}");
         let expected = indoc! { "
                            1    1   1
                2 0    5    0    5   9
@@ -310,7 +310,7 @@ mod tests {
         assert_eq!(*table.get((3, 2)), 9);
 
         assert_eq!(
-            format!("{}", table),
+            format!("{table}"),
             indoc! {"
               0 2
             0 001

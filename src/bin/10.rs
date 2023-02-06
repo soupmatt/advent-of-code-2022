@@ -38,10 +38,7 @@ fn parse_instruction(input: &str) -> Instruction {
             return Instruction::Addx(amount);
         }
     }
-    panic!(
-        "Something went wrong! Don't understand instruction <{}>",
-        input
-    )
+    panic!("Something went wrong! Don't understand instruction <{input}>")
 }
 
 fn parse_instruction_stream(input: &str) -> VecDeque<Instruction> {

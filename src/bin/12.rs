@@ -16,10 +16,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             if let Some(neighbors) = edges.get(p) {
                 neighbors.iter().map(|p| (p.clone(), 1u32))
             } else {
-                panic!(
-                    "Something went wrong trying to find the neighbors of {:?}",
-                    p
-                )
+                panic!("Something went wrong trying to find the neighbors of {p:?}")
             }
         },
         |p| *p == goal,
@@ -43,10 +40,7 @@ pub fn part_two(input: &str) -> Option<u32> {
                     if let Some(neighbors) = edges.get(p) {
                         neighbors.iter().map(|p| (p.clone(), 1u32))
                     } else {
-                        panic!(
-                            "Something went wrong trying to find the neighbors of {:?}",
-                            p
-                        )
+                        panic!("Something went wrong trying to find the neighbors of {p:?}")
                     }
                 },
                 |p| *p == goal,

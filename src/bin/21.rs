@@ -243,7 +243,7 @@ impl Operation {
             "-" => Operation::Sub,
             "*" => Operation::Mul,
             "/" => Operation::Div,
-            _ => panic!("unrecognized operation {}", input),
+            _ => panic!("unrecognized operation {input}"),
         }
     }
 }

@@ -31,14 +31,11 @@ fn parse_input(input: &str) -> Vec<Direction> {
                     "L" => Direction::Left,
                     "U" => Direction::Up,
                     "D" => Direction::Down,
-                    _ => panic!(
-                        "something when wrong! don't understand direction {}",
-                        direction
-                    ),
+                    _ => panic!("something when wrong! don't understand direction {direction}"),
                 };
                 repeat(direction).take(count)
             } else {
-                panic!("something went wrong! line wouldn't split \"{}\"", line)
+                panic!("something went wrong! line wouldn't split \"{line}\"")
             }
         })
         .fold(vec![], |mut acc, i| {

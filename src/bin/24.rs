@@ -277,7 +277,7 @@ impl Display for WindyValley {
                                 Dir::East => write!(f, ">")?,
                                 Dir::West => write!(f, "<")?,
                             },
-                            s => write!(f, "{}", s)?,
+                            s => write!(f, "{s}")?,
                         },
                     }
                 }

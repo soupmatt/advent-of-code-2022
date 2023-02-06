@@ -15,7 +15,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     let mut cave = Cave::new(input, true);
 
     while cave.drop_sand().is_some() {}
-    println!("{}", cave);
+    println!("{cave}");
 
     Some(cave.sand_count)
 }

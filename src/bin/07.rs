@@ -103,7 +103,7 @@ impl Directory {
                 let file = new_file(name, size);
                 self.add_element(file);
             } else {
-                panic!("Something went wrong! {}", line)
+                panic!("Something went wrong! {line}")
             }
         }
     }

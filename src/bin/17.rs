@@ -413,7 +413,7 @@ mod tests {
         let cave = Cave::new(vec![Jet::Left]);
 
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 +-------+
             "}
@@ -421,7 +421,7 @@ mod tests {
 
         cave.increase_height(4);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|
@@ -436,7 +436,7 @@ mod tests {
         cave.columns.borrow_mut()[2][0] = Tile::Rock;
         cave.columns.borrow_mut()[3][0] = Tile::Rock;
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|
@@ -451,7 +451,7 @@ mod tests {
         cave.columns.borrow_mut()[3][2] = Tile::Rock;
         cave.columns.borrow_mut()[4][2] = Tile::Rock;
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |...##..|
@@ -469,7 +469,7 @@ mod tests {
             rock_shape: rock_shapes[0].clone(),
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|
@@ -488,7 +488,7 @@ mod tests {
             rock_shape: rock_shapes[1].clone(),
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |...@...|
@@ -507,7 +507,7 @@ mod tests {
             rock_shape: rock_shapes[2].clone(),
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |....@..|
@@ -526,7 +526,7 @@ mod tests {
             rock_shape: rock_shapes[3].clone(),
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..@....|
                 |..@....|
@@ -545,7 +545,7 @@ mod tests {
             rock_shape: rock_shapes[4].clone(),
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|
@@ -566,7 +566,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 0);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 +-------+
             "}
@@ -588,7 +588,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 1);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.####..|
                 +-------+
@@ -603,7 +603,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 5);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |...#...|
                 |...#...|
@@ -622,7 +622,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 7);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..#....|
                 |.###...|
@@ -643,7 +643,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 7);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..#....|
                 |.###...|
@@ -664,7 +664,7 @@ mod tests {
 
         assert_eq!(cave.highest_point(), 7);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..#....|
                 |.###.##|
@@ -690,7 +690,7 @@ mod tests {
             bottom_left: Point { col: 1, row: 1 },
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.@@....|
                 |.@@....|
@@ -701,7 +701,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Left));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |@@.....|
                 |@@.....|
@@ -712,7 +712,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Left));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |@@.....|
                 |@@.....|
@@ -726,7 +726,7 @@ mod tests {
             bottom_left: Point { col: 4, row: 1 },
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |....@@.|
                 |....@@.|
@@ -737,7 +737,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Right));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.....@@|
                 |.....@@|
@@ -748,7 +748,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Right));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.....@@|
                 |.....@@|
@@ -762,7 +762,7 @@ mod tests {
             bottom_left: Point { col: 2, row: 1 },
         }));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..@@...|
                 |..@@...|
@@ -773,7 +773,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Down));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |..@@...|
@@ -784,7 +784,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Down));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |..@@...|
@@ -808,7 +808,7 @@ mod tests {
         cave.columns.borrow_mut()[0][1] = Tile::Rock;
         cave.columns.borrow_mut()[2][0] = Tile::Rock;
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..@@...|
                 |#.@@...|
@@ -819,7 +819,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Left));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.@@....|
                 |#@@....|
@@ -830,7 +830,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Left));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.@@....|
                 |#@@....|
@@ -845,7 +845,7 @@ mod tests {
         }));
         cave.columns.borrow_mut()[6][2] = Tile::Rock;
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |...@@.#|
                 |#..@@..|
@@ -856,7 +856,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Right));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |....@@#|
                 |#...@@.|
@@ -867,7 +867,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Right));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |....@@#|
                 |#...@@.|
@@ -882,7 +882,7 @@ mod tests {
         }));
         cave.increase_height(4);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |..@@...|
                 |..@@..#|
@@ -894,7 +894,7 @@ mod tests {
 
         assert!(cave.handle_move(MoveDirection::Down));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |..@@..#|
@@ -906,7 +906,7 @@ mod tests {
 
         assert!(!cave.handle_move(MoveDirection::Down));
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |..@@..#|
@@ -922,7 +922,7 @@ mod tests {
         let mut cave = Cave::new(vec![Jet::Left, Jet::Right]);
 
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 +-------+
             "}
@@ -931,7 +931,7 @@ mod tests {
 
         cave.drop_next_rock();
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|
@@ -945,7 +945,7 @@ mod tests {
         cave.drop_next_rock();
         assert_eq!(cave.highest_point(), 4);
         assert_eq!(
-            format!("{}", cave),
+            format!("{cave}"),
             indoc! {"
                 |.......|
                 |.......|

@@ -14,7 +14,7 @@ pub fn part_one(input: &str) -> Option<usize> {
     let max_pressure_drop = cave.max_pressure_drop_rate;
     let (steps, cost) = answer_part_1(cave, state);
 
-    println!("Max Possible Flow Rate {}", max_pressure_drop);
+    println!("Max Possible Flow Rate {max_pressure_drop}");
 
     for c in steps.iter() {
         println!("Minute {}", c.minute);
@@ -25,7 +25,7 @@ pub fn part_one(input: &str) -> Option<usize> {
         println!("Cost: {}", c.cost);
         println!();
     }
-    println!("Total Cost: {}", cost);
+    println!("Total Cost: {cost}");
     println!(
         "Max Possible Pressure Release: {}",
         max_pressure_drop * CaveSystem::NUM_MINUTES
